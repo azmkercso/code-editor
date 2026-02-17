@@ -329,8 +329,20 @@ scan_github_advisories() {
     local repo_owner="microsoft"
     local repo_name="vscode"
     local vscode_version=$(jq -r '.version' third-party-src/package.json)
+    local backported_file="patches/backported-patches.json"
     
     echo "Found VS Code version: $vscode_version"
+    
+    # Load backported patches list if exists
+    local -A backported_patches
+    if [ -f "$backported_file" ]; then
+        echo "Loading backported patches from $backported_file"
+        local finding_ids=$(jq -r '.[].finding_id' "$backported_file")
+        while IFS= read -r finding_id; do
+            [ -n "$finding_id" ] && backported_patches["$finding_id"]=1
+        done <<< "$finding_ids"
+        echo "Loaded ${#backported_patches[@]} backported patches to ignore"
+    fi
     
     echo "Fetching security advisories from GitHub API for $repo_owner/$repo_name"
     
@@ -424,6 +436,13 @@ scan_github_advisories() {
         else
             echo "⚠️  No version range specified - assuming potentially affected"
             is_version_affected=true
+        fi
+        
+        # Check if this advisory is in the backported patches list
+        if [[ -v backported_patches["$ghsa_id"] ]] || [[ "$cve_id" != "N/A" && -v backported_patches["$cve_id"] ]]; then
+            echo "ℹ️  Ignoring - patch backported to current version"
+            advisory_index=$((advisory_index + 1))
+            continue
         fi
         
         # Count concerning advisories based on combined criteria
