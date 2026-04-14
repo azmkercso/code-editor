@@ -19,6 +19,7 @@ common/integration.diff
 common/replace-gulp-untar.diff
 common/adopt-new-proxy-agent.diff
 common/fix-terminal-autoreplies.diff
+common/override-picomatch-cve-2026-33671.diff
 web-server/suppress-known-errors-build-integration.diff
 web-server/local-storage.diff
 web-server/base-path.diff
