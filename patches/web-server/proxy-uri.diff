@@ -74,7 +74,7 @@ Index: code-editor-src/src/vs/server/node/proxyServer.ts
 ===================================================================
 --- /dev/null
 +++ code-editor-src/src/vs/server/node/proxyServer.ts
-@@ -0,0 +1,186 @@
+@@ -0,0 +1,191 @@
 +import proxyServer from "http-proxy";
 +import * as http from "http";
 +import * as net from "net";
@@ -96,6 +96,7 @@ Index: code-editor-src/src/vs/server/node/proxyServer.ts
 +	private readonly proxy: proxyServer;
 +	private _allowedPorts: Set<number> = new Set();
 +	private _socketServer: SocketServer<RemoteAgentConnectionContext>;
++	private readonly _basePath: string;
 +
 +	private readonly _onPortAdded = new Emitter<number>();
 +	private readonly _onPortRemoved = new Emitter<number>();
@@ -105,10 +106,11 @@ Index: code-editor-src/src/vs/server/node/proxyServer.ts
 +	public readonly onPortRemoved: Event<number> = this._onPortRemoved.event;
 +	public readonly onPortSynced: Event<number[]> = this._onPortSynced.event;
 +
-+	constructor(_socketServer: SocketServer<RemoteAgentConnectionContext>) {
++	constructor(_socketServer: SocketServer<RemoteAgentConnectionContext>, basePath: string) {
 +		this.proxy = proxyServer.createProxyServer({});
 +		this.setupProxy();
 +		this._socketServer = _socketServer;
++		this._basePath = basePath;
 +		this.registerChannel();
 +	}
 +
@@ -139,6 +141,9 @@ Index: code-editor-src/src/vs/server/node/proxyServer.ts
 +		if (!targetPathname) {
 +			return;
 +		}
++		if (this._basePath && targetPathname.startsWith(this._basePath)) {
++			targetPathname = targetPathname.slice(this._basePath.length);
++		}
 +		const [_, proxyPrefix, port] = targetPathname.split("/", 3);
 +		if (!ACCEPTED_PROXY_PREFIXES.includes(proxyPrefix)) {
 +			return;
@@ -152,7 +157,7 @@ Index: code-editor-src/src/vs/server/node/proxyServer.ts
 +		return {
 +			base,
 +			port,
-+			target: url.resolve(`http://0.0.0.0:${port}/`, targetPathname),
++			target: url.resolve(`http://0.0.0.0:${port}/`, targetPathname + (sourceUrl.search ?? "")),
 +		};
 +	}
 +
@@ -288,7 +293,7 @@ Index: code-editor-src/src/vs/server/node/remoteExtensionHostAgentServer.ts
  		);
 +		this._proxyServer = (
 +			hasWebClient
-+				? this._instantiationService.createInstance(ProxyServer, this._socketServer)
++				? this._instantiationService.createInstance(ProxyServer, this._socketServer, serverBasePath ?? '')
 +				: null
 +		);
  		this._logService.info(`Extension host agent started.`);
