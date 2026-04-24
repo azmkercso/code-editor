@@ -1,0 +1,29 @@
+Override uuid to ^14.0.0
+
+Index: b/package.json
+===================================================================
+--- a/package.json
++++ b/package.json
+@@ -254,7 +254,8 @@
+       "picomatch": "^2.3.2"
+     },
+     "lodash-es": "^4.18.0",
+-    "follow-redirects": "^1.16.0"
++    "follow-redirects": "^1.16.0",
++    "uuid": "^14.0.0"
+   },
+   "repository": {
+     "type": "git",
+Index: b/remote/package.json
+===================================================================
+--- a/remote/package.json
++++ b/remote/package.json
+@@ -47,6 +47,7 @@
+     "node-gyp-build": "4.8.1",
+     "picomatch": "^4.0.4",
+     "lodash-es": "^4.18.0",
+-    "follow-redirects": "^1.16.0"
++    "follow-redirects": "^1.16.0",
++    "uuid": "^14.0.0"
+   }
+ }
