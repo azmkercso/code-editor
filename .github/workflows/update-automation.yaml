@@ -232,6 +232,7 @@ jobs:
       - name: Build target
         env:
           TARGET: ${{ matrix.target }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./scripts/prepare-src.sh "$TARGET" --reset-lockfiles
           
