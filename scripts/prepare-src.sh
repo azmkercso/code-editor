@@ -201,7 +201,11 @@ apply_overrides() {
     rsync -a "${PRESENT_WORKING_DIR}/$overrides_path/" "${PATCHED_SRC_DIR}"
 
     echo "Applying package-lock overrides"
-    rsync -a "${PRESENT_WORKING_DIR}/$package_lock_path/" "${PATCHED_SRC_DIR}"
+    if [[ "$RESET_LOCKFILES" == "true" ]]; then
+        echo "Skipping package-lock overrides (--reset-lockfiles)"
+    else
+        rsync -a "${PRESENT_WORKING_DIR}/$package_lock_path/" "${PATCHED_SRC_DIR}"
+    fi
 }
 
 update_inline_sha() {
@@ -435,24 +439,29 @@ rebase() {
 # Parse command line arguments
 COMMAND="prepare_src"
 TARGET="code-editor-sagemaker-server"
+RESET_LOCKFILES=false
 
-case "${1:-}" in
-    --command)
-        [[ $# -ge 2 ]] || { echo "--command requires a value" >&2; exit 1; }
-        COMMAND="$2"
-        TARGET="${3:-$TARGET}"
-        ;;
-    -*)
-        echo "Unknown option $1" >&2
-        exit 1
-        ;;
-    "")
-        # No arguments, use defaults
-        ;;
-    *)
-        TARGET="$1"
-        ;;
-esac
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --command)
+            [[ $# -ge 2 ]] || { echo "--command requires a value" >&2; exit 1; }
+            COMMAND="$2"
+            shift 2
+            ;;
+        --reset-lockfiles)
+            RESET_LOCKFILES=true
+            shift
+            ;;
+        -*)
+            echo "Unknown option $1" >&2
+            exit 1
+            ;;
+        *)
+            TARGET="$1"
+            shift
+            ;;
+    esac
+done
 
 PATCHED_SRC_DIR="$PRESENT_WORKING_DIR/code-editor-src"
 CONFIG_FILE="$PRESENT_WORKING_DIR/configuration/$TARGET.json"
