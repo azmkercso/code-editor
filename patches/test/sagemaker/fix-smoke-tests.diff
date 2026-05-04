@@ -145,7 +145,7 @@ Index: code-editor-src/test/smoke/src/areas/multiroot/multiroot.test.ts
 +	await app.workbench.quickinput.waitForQuickInputOpened();
 +	await app.workbench.quickinput.type(`${workspacePath}/smoketest.code-workspace`);
 +	await new Promise(resolve => setTimeout(resolve, 500));
-+	await app.code.sendKeybinding('enter');
++	await app.code.dispatchKeybinding('enter', () => Promise.resolve());
 +	await new Promise(resolve => setTimeout(resolve, 5000));
 +	await app.code.waitForElement('.monaco-workbench')
  }

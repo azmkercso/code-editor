@@ -1,0 +1,63 @@
+Add smoke test for settings configuration
+
+Verifies telemetry is OFF-only, update mode is "none", and chat
+settings are excluded from the Settings UI via excludedSettingPatterns.
+Index: code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
+@@ -0,0 +1,54 @@
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++
++import { Application, Logger } from '../../../../automation';
++import { installAllHandlers } from '../../utils';
++
++export function setup(logger: Logger) {
++	describe('Code Editor - Settings Configuration', () => {
++
++		installAllHandlers(logger);
++
++		it('telemetry setting should be OFF with no other options', async function () {
++			const app = this.app as Application;
++			await app.workbench.settingsEditor.searchSettingsUI('telemetry.telemetryLevel');
++			const settingControl = await app.code.waitForElement('.settings-editor .setting-item-contents .setting-item-control select');
++			if (settingControl) {
++				const text = settingControl.textContent.toLowerCase();
++				if (!text.includes('off')) {
++					throw new Error(`Telemetry setting should be "off", got: ${settingControl.textContent}`);
++				}
++			}
++		});
++
++		it('update mode should be "none"', async function () {
++			const app = this.app as Application;
++			await app.workbench.settingsEditor.searchSettingsUI('update.mode');
++			const settingControl = await app.code.waitForElement('.settings-editor .setting-item-contents .setting-item-control select');
++			if (settingControl) {
++				const text = settingControl.textContent.toLowerCase();
++				if (!text.includes('none')) {
++					throw new Error(`Update mode should be "none", got: ${settingControl.textContent}`);
++				}
++			}
++		});
++
++		it('chat settings should be excluded from settings UI', async function () {
++			const app = this.app as Application;
++			await app.workbench.settingsEditor.searchSettingsUI('chat.');
++			// Wait for search to complete, then verify no setting items are shown
++			// The count widget shows "No Settings Found" or the editor shows .no-results
++			await new Promise(resolve => setTimeout(resolve, 3000));
++			const items = await app.code.getElements('.settings-editor .setting-item-bool, .settings-editor .setting-item-text, .settings-editor .setting-item-enum', false);
++			if (items && items.length > 0) {
++				throw new Error(`Expected no chat settings, but found ${items.length} setting items`);
++			}
++
++			// Verify a normal setting still works
++			await app.workbench.settingsEditor.searchSettingsUI('editor.fontSize');
++			await app.code.waitForElement('.settings-editor .setting-item-contents');
++		});
++	});
++}

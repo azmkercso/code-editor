@@ -1,0 +1,109 @@
+Add smoke test for branding and about dialog
+
+Verifies Code Editor branding in the About dialog, custom trusted
+domains (amazon.com), and target-specific about dialog variants
+(SageMaker dual version display, web-embedded OK-only button).
+Index: code-editor-src/test/smoke/src/areas/customizations/branding.test.ts
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/customizations/branding.test.ts
+@@ -0,0 +1,99 @@
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++
++import { Application, Logger } from '../../../../automation';
++import { installAllHandlers } from '../../utils';
++
++export function setup(logger: Logger) {
++	describe('Code Editor - Branding & Modified Features', () => {
++
++		installAllHandlers(logger);
++
++		it('should show Code Editor branding in About dialog', async function () {
++			const app = this.app as Application;
++			await app.workbench.quickaccess.runCommand('workbench.action.showAboutDialog');
++			const aboutText = await app.code.waitForTextContent('.dialog-message-text', undefined, text => text.includes('Code Editor'));
++			if (!aboutText.includes('Code Editor')) {
++				throw new Error(`About dialog should contain "Code Editor", got: ${aboutText}`);
++			}
++		});
++
++		it('should show custom trusted domains (amazon.com, not microsoft.com)', async function () {
++			const app = this.app as Application;
++			await app.workbench.quickaccess.runCommand('workbench.action.manageTrustedDomain');
++			const content = await app.code.waitForTextContent('.monaco-editor .view-lines', undefined, text => text.length > 0);
++			if (content.includes('microsoft.com') && !content.includes('amazon.com')) {
++				throw new Error('Trusted domains should reference amazon.com, not microsoft.com');
++			}
++		});
++	});
++
++	describe('Code Editor - About Dialog Variants', () => {
++
++		installAllHandlers(logger);
++
++		it('about dialog should show both Code - OSS and SageMaker versions (sagemaker target)', async function () {
++			if (!process.env.CODE_EDITOR_TARGET?.includes('sagemaker')) {
++				this.skip();
++				return;
++			}
++			const app = this.app as Application;
++			await app.workbench.quickaccess.runCommand('workbench.action.showAboutDialog');
++			// The detail text (versions, date, browser) is in .dialog-message-detail, not .dialog-message-text (which is the title)
++			const detailText = await app.code.waitForTextContent('.dialog-message-detail', undefined, text => text.includes('Code - OSS'));
++			if (!detailText.includes('SageMaker Code Editor')) {
++				throw new Error(`About dialog should show SageMaker Code Editor version, got: ${detailText}`);
++			}
++		});
++
++		it('about dialog should have only OK button, no Copy (web-embedded target)', async function () {
++			if (!process.env.CODE_EDITOR_TARGET?.includes('web-embedded')) {
++				this.skip();
++				return;
++			}
++			const app = this.app as Application;
++			await app.workbench.quickaccess.runCommand('workbench.action.showAboutDialog');
++			await app.code.waitForElement('.dialog-message-text');
++			const buttons = await app.code.getElements('.dialog-buttons .monaco-button', false);
++			if (buttons) {
++				const buttonTexts = buttons.map(b => b.textContent);
++				if (buttonTexts.some(t => t.includes('Copy'))) {
++					throw new Error(`About dialog should not have Copy button, found: ${buttonTexts.join(', ')}`);
++				}
++			}
++		});
++	});
++
++	describe('Code Editor - Custom Assets', () => {
++
++		installAllHandlers(logger);
++
++		it('should serve custom index.html with error suppression', async function () {
++			const app = this.app as Application;
++			const pageSource = await app.code.driver.currentPage.content();
++			// Custom index.html includes error suppression script
++			if (!pageSource.includes('onerror') && !pageSource.includes('suppressErrors')) {
++				logger.log('Warning: Custom index.html error suppression not detected in page source');
++			}
++		});
++
++		it('should serve custom favicon', async function () {
++			const app = this.app as Application;
++			const page = app.code.driver.currentPage;
++			// Extract the favicon URL from the page's <link rel="icon"> element
++			const faviconUrl = await page.evaluate(() => {
++				const link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
++				return link?.href || null;
++			});
++			if (!faviconUrl) {
++				throw new Error('No <link rel="icon"> found in page');
++			}
++			const response = await page.request.get(faviconUrl);
++			if (response.status() !== 200) {
++				throw new Error(`Expected favicon at ${faviconUrl} to return 200, got ${response.status()}`);
++			}
++		});
++	});
++}

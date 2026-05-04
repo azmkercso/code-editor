@@ -175,13 +175,13 @@ Index: code-editor-src/test/smoke/src/main.ts
 ===================================================================
 --- code-editor-src.orig/test/smoke/src/main.ts
 +++ code-editor-src/test/smoke/src/main.ts
-@@ -5,14 +5,9 @@
- 
+@@ -6,13 +6,10 @@
  import * as fs from 'fs';
  import { gracefulify } from 'graceful-fs';
--import * as cp from 'child_process';
- import * as path from 'path';
--import * as os from 'os';
+ import * as cp from 'child_process';
+-import * as path from 'path';
+ import * as os from 'os';
++import * as path from 'path';
  import minimist from 'minimist';
 -import * as vscodetest from '@vscode/test-electron';
 -import fetch from 'node-fetch';
@@ -191,7 +191,7 @@ Index: code-editor-src/test/smoke/src/main.ts
  
  import { setup as setupDataLossTests } from './areas/workbench/data-loss.test';
  import { setup as setupPreferencesTests } from './areas/preferences/preferences.test';
-@@ -21,8 +16,6 @@ import { setup as setupNotebookTests } f
+@@ -21,8 +18,6 @@ import { setup as setupNotebookTests } f
  import { setup as setupLanguagesTests } from './areas/languages/languages.test';
  import { setup as setupStatusbarTests } from './areas/statusbar/statusbar.test';
  import { setup as setupExtensionTests } from './areas/extensions/extensions.test';
@@ -200,7 +200,7 @@ Index: code-editor-src/test/smoke/src/main.ts
  import { setup as setupLocalizationTests } from './areas/workbench/localization.test';
  import { setup as setupLaunchTests } from './areas/workbench/launch.test';
  import { setup as setupTerminalTests } from './areas/terminal/terminal.test';
-@@ -120,33 +113,10 @@ try {
+@@ -125,33 +120,36 @@ try {
  	logger.log(`Error enabling graceful-fs: ${error}`);
  }
  
@@ -213,13 +213,13 @@ Index: code-editor-src/test/smoke/src/main.ts
 -		return 'electron';
 -	}
 -}
-+const testDataPath = '/home/sagemaker-user';
- 
+-
 -const testDataPath = path.join(os.tmpdir(), `vscsmoke-${getTestTypeSuffix()}`);
--if (fs.existsSync(testDataPath)) {
--	fs.rmSync(testDataPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
--}
--fs.mkdirSync(testDataPath, { recursive: true });
++const testDataPath = process.env.SMOKE_TEST_DATA_PATH || path.join(os.tmpdir(), 'vscsmoke');
+ if (fs.existsSync(testDataPath)) {
+ 	fs.rmSync(testDataPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
+ }
+ fs.mkdirSync(testDataPath, { recursive: true });
 -process.once('exit', () => {
 -	try {
 -		fs.rmSync(testDataPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
@@ -227,16 +227,37 @@ Index: code-editor-src/test/smoke/src/main.ts
 -		// noop
 -	}
 -});
--
--const testRepoUrl = 'https://github.com/microsoft/vscode-smoketest-express';
+ 
+ const testRepoUrl = 'https://github.com/microsoft/vscode-smoketest-express';
 -const workspacePath = path.join(testDataPath, `vscode-smoketest-express`);
 +const workspacePath = path.join(testDataPath, 'vscode-smoketest-express');
  const extensionsPath = path.join(testDataPath, 'extensions-dir');
 -fs.mkdirSync(extensionsPath, { recursive: true });
++
++async function setupRepository(): Promise<void> {
++	if (opts['test-repo']) {
++		logger.log('Copying test project repository:', opts['test-repo']);
++		fs.rmSync(workspacePath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
++		cp.execSync(`cp -R "${opts['test-repo']}" "${workspacePath}"`);
++	} else {
++		if (!fs.existsSync(workspacePath)) {
++			logger.log('Cloning test project repository...');
++			const res = cp.spawnSync('git', ['clone', testRepoUrl, workspacePath], { stdio: 'inherit' });
++			if (!fs.existsSync(workspacePath)) {
++				throw new Error(`Clone operation failed: ${res.stderr?.toString()}`);
++			}
++		} else {
++			logger.log('Cleaning test project repository...');
++			cp.spawnSync('git', ['fetch'], { cwd: workspacePath, stdio: 'inherit' });
++			cp.spawnSync('git', ['reset', '--hard', 'FETCH_HEAD'], { cwd: workspacePath, stdio: 'inherit' });
++			cp.spawnSync('git', ['clean', '-xdf'], { cwd: workspacePath, stdio: 'inherit' });
++		}
++	}
++}
  
  function fail(errorMessage): void {
  	logger.log(errorMessage);
-@@ -223,7 +193,10 @@ else {
+@@ -228,7 +226,10 @@ else {
  	const testCodeServerPath = opts.build || process.env.VSCODE_REMOTE_SERVER_PATH;
  
  	if (typeof testCodeServerPath === 'string') {
@@ -248,7 +269,7 @@ Index: code-editor-src/test/smoke/src/main.ts
  			fail(`Cannot find Code server at ${testCodeServerPath}.`);
  		} else {
  			logger.log(`Running web smoke tests against ${testCodeServerPath}`);
-@@ -245,125 +218,6 @@ logger.log(`VS Code product quality: ${q
+@@ -250,125 +251,6 @@ logger.log(`VS Code product quality: ${q
  
  const userDataDir = path.join(testDataPath, 'd');
  
@@ -374,11 +395,10 @@ Index: code-editor-src/test/smoke/src/main.ts
  // Before all tests run setup
  before(async function () {
  	this.timeout(5 * 60 * 1000); // increase since we download VSCode
-@@ -388,19 +242,6 @@ before(async function () {
- 		extraArgs: (opts.electronArgs || '').split(' ').map(arg => arg.trim()).filter(arg => !!arg)
+@@ -394,18 +276,7 @@ before(async function () {
  	};
  	this.defaultOptions = options;
--
+ 
 -	await setup();
 -});
 -
@@ -391,10 +411,11 @@ Index: code-editor-src/test/smoke/src/main.ts
 -	} catch (error) {
 -		logger.log(`Unable to delete smoke test workspace: ${error}. This indicates some process is locking the workspace folder.`);
 -	}
++	await setupRepository();
  });
  
  describe(`VSCode Smoke Tests (${opts.web ? 'Web' : 'Electron'})`, () => {
-@@ -413,8 +254,6 @@ describe(`VSCode Smoke Tests (${opts.web
+@@ -418,8 +289,6 @@ describe(`VSCode Smoke Tests (${opts.web
  	setupTaskTests(logger);
  	setupStatusbarTests(logger);
  	if (quality !== Quality.Dev && quality !== Quality.OSS) { setupExtensionTests(logger); }

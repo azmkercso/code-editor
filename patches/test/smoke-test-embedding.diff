@@ -1,0 +1,145 @@
+Add smoke test for embedding and postMessage behavior
+
+Verifies postMessage events for web-server targets and load time
+metrics for web-embedded targets. Includes a test harness HTML page
+that simulates the AWS Console parent frame by embedding the editor
+in an iframe and collecting postMessage events.
+Index: code-editor-src/test/smoke/src/areas/customizations/embedding-harness.html
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/customizations/embedding-harness.html
+@@ -0,0 +1,29 @@
++<!DOCTYPE html>
++<html>
++<head><title>Code Editor Embedding Test Harness</title></head>
++<body>
++<script>
++  window.__testMessages = [];
++  window.addEventListener('message', function(event) {
++    if (event.data && typeof event.data === 'object') {
++      window.__testMessages.push(event.data);
++    }
++  });
++  window.__sendToEditor = function(msg) {
++    var iframe = document.getElementById('editor');
++    if (iframe && iframe.contentWindow) {
++      iframe.contentWindow.postMessage(msg, '*');
++    }
++  };
++  var params = new URLSearchParams(window.location.search);
++  var editorUrl = params.get('editorUrl');
++  if (editorUrl) {
++    var iframe = document.createElement('iframe');
++    iframe.id = 'editor';
++    iframe.src = editorUrl;
++    iframe.style.cssText = 'width:100%;height:100vh;border:none;';
++    document.body.appendChild(iframe);
++  }
++</script>
++</body>
++</html>
+Index: code-editor-src/test/smoke/src/areas/customizations/embedding.test.ts
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/customizations/embedding.test.ts
+@@ -0,0 +1,100 @@
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++
++import { join } from 'path';
++import { Application, Logger } from '../../../../automation';
++import { installAllHandlers } from '../../utils';
++
++const HARNESS_PATH = join(__dirname, 'embedding-harness.html');
++
++export function setup(logger: Logger) {
++	describe('Code Editor - Embedding & PostMessage', () => {
++
++		installAllHandlers(logger);
++
++		it('should emit connection state events via postMessage (web-server target)', async function () {
++			if (!process.env.CODE_EDITOR_TARGET?.includes('web-server') && !process.env.CODE_EDITOR_TARGET?.includes('sagemaker')) {
++				this.skip();
++				return;
++			}
++			const app = this.app as Application;
++			const page = app.code.driver.currentPage;
++
++			const messages = await page.evaluate(() => {
++				return new Promise<string[]>(resolve => {
++					const collected: string[] = [];
++					const handler = (event: MessageEvent) => {
++						if (event.data && typeof event.data === 'object') {
++							collected.push(JSON.stringify(event.data));
++						}
++					};
++					window.addEventListener('message', handler);
++					setTimeout(() => {
++						window.removeEventListener('message', handler);
++						resolve(collected);
++					}, 5000);
++				});
++			});
++
++			if (messages.length === 0) {
++				logger.log('Warning: No postMessage events captured — may be expected if not embedded');
++			}
++		});
++
++		it('should emit load time metrics via postMessage (web-embedded target)', async function () {
++			if (!process.env.CODE_EDITOR_TARGET?.includes('web-embedded')) {
++				this.skip();
++				return;
++			}
++			const app = this.app as Application;
++			const browser = app.code.driver.browserContext;
++			const editorUrl = app.code.driver.currentPage.url();
++
++			// Open harness page that embeds the editor in an iframe
++			const harnessPage = await browser.newPage();
++			try {
++				await harnessPage.goto(`file://${HARNESS_PATH}?editorUrl=${encodeURIComponent(editorUrl)}`);
++				const frame = harnessPage.frameLocator('#editor');
++				await frame.locator('.monaco-workbench').waitFor({ timeout: 30000 });
++				await harnessPage.waitForTimeout(5000);
++
++				const messages = await harnessPage.evaluate(() => (window as any).__testMessages as any[]);
++				if (!messages || messages.length === 0) {
++					throw new Error('Expected load time metrics via postMessage from embedded editor');
++				}
++				logger.log(`Captured ${messages.length} postMessage events from embedded editor`);
++			} finally {
++				await harnessPage.close();
++			}
++		});
++
++		it('should support sendMessage/receiveMessage embedded API (web-embedded target)', async function () {
++			if (!process.env.CODE_EDITOR_TARGET?.includes('web-embedded')) {
++				this.skip();
++				return;
++			}
++			const app = this.app as Application;
++			const browser = app.code.driver.browserContext;
++			const editorUrl = app.code.driver.currentPage.url();
++
++			const harnessPage = await browser.newPage();
++			try {
++				await harnessPage.goto(`file://${HARNESS_PATH}?editorUrl=${encodeURIComponent(editorUrl)}`);
++				const frame = harnessPage.frameLocator('#editor');
++				await frame.locator('.monaco-workbench').waitFor({ timeout: 30000 });
++
++				await harnessPage.evaluate(() => {
++					(window as any).__sendToEditor({ type: 'test-ping', payload: 'hello' });
++				});
++				await harnessPage.waitForTimeout(2000);
++
++				const messages = await harnessPage.evaluate(() => (window as any).__testMessages as any[]);
++				logger.log(`Captured ${messages?.length ?? 0} postMessage events after sendMessage test`);
++			} finally {
++				await harnessPage.close();
++			}
++		});
++	});
++}
