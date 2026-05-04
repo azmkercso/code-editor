@@ -1,4 +1,8 @@
-Override follow-redirects to ^1.16.0 to address GHSA-r4q5-vmmm-2653 (medium).
+Override follow-redirects to ^1.16.0.
+
+@generated
+@generator: scripts/apply-override.sh --patch common/override-follow-redirects.diff --override 'global:follow-redirects=^1.16.0' --override 'remote/package.json@global:follow-redirects=^1.16.0'
+@override-package: follow-redirects@^1.16.0
 
 Index: b/package.json
 ===================================================================

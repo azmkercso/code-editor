@@ -234,22 +234,151 @@ parse_missing_files() {
     printf '%s\n' "$1" | grep -A5 "can't find file to patch" | grep "^|Index:" | sed 's/^|Index: //' | sort -u
 }
 
+# ---------------------------------------------------------------------------
+# Patch metadata helpers
+# ---------------------------------------------------------------------------
+
+# Check if a patch file contains a given metadata flag (e.g. @generated, @backported)
+patch_has_meta() {
+    local patch_file="$1"
+    local key="$2"
+    [[ -f "$patch_file" ]] || return 1
+    # Only search the header (lines before the first "Index:" or "---" diff marker)
+    sed '/^Index:\|^---.*\//q' "$patch_file" | grep -q "^${key}" 2>/dev/null
+}
+
+# Get the value of a metadata key from a patch header (e.g. @remove-after: 1.109.1 → 1.109.1)
+get_patch_meta() {
+    local patch_file="$1"
+    local key="$2"
+    [[ -f "$patch_file" ]] || return 1
+    sed '/^Index:\|^---.*\//q' "$patch_file" | grep "^${key}:" | head -1 | sed "s/^${key}:[[:space:]]*//"
+}
+
+# Get the upstream Code-OSS version from third-party-src/package.json
+get_upstream_version() {
+    local pkg_json="${PRESENT_WORKING_DIR}/third-party-src/package.json"
+    if [[ -f "$pkg_json" ]]; then
+        jq -r '.version' "$pkg_json"
+    else
+        echo "0.0.0"
+    fi
+}
+
+# Compare two semver versions: returns 0 (true) if $1 >= $2
+version_gte() {
+    local v1="$1"
+    local v2="$2"
+    local sorted
+    sorted=$(printf '%s\n%s\n' "$v1" "$v2" | sort -V | head -1)
+    [[ "$sorted" == "$v2" ]]
+}
+
 rebase() {
     echo "Rebasing patches one by one..."
     pushd "${PATCHED_SRC_DIR}"
-    
+
+    local removed_patches=()
+
     # Apply patches one by one with force
     while quilt next >/dev/null 2>&1; do
-        
+        local next_patch
+        next_patch=$(quilt next)
+
+        local patch_file="${QUILT_PATCHES}/${next_patch}"
+
+        # --- Backported patch: auto-remove if upstream version >= @remove-after ---
+        if patch_has_meta "$patch_file" "@backported" && patch_has_meta "$patch_file" "@remove-after"; then
+            local remove_after
+            remove_after=$(get_patch_meta "$patch_file" "@remove-after")
+            local upstream_version
+            upstream_version=$(get_upstream_version)
+            if version_gte "$upstream_version" "$remove_after"; then
+                echo "Auto-removing expired backported patch: $next_patch (upstream $upstream_version >= $remove_after)"
+                quilt delete -n "$next_patch"
+                removed_patches+=("$next_patch")
+                continue
+            fi
+        fi
+
+        # --- Generated patch: try apply, then regenerate on conflict ---
+        if patch_has_meta "$patch_file" "@generated"; then
+            set +e
+            local output
+            output=$(quilt push -f -m 2>&1)
+            local exit_code=$?
+            set -e
+            echo "$output"
+
+            if [[ $exit_code -eq 0 ]]; then
+                echo "Successfully applied generated patch: $(quilt top)"
+                quilt refresh
+                continue
+            fi
+
+            # Apply failed — regenerate using @generator command
+            local generator
+            generator=$(get_patch_meta "$patch_file" "@generator" || true)
+            if [[ -n "$generator" ]]; then
+                echo ""
+                echo "Generated patch failed to apply, regenerating: $next_patch"
+                quilt pop -f 2>/dev/null || true
+
+                set +e
+                # Run generator from repo root (PRESENT_WORKING_DIR)
+                (cd "$PRESENT_WORKING_DIR" && eval "$generator") 2>&1
+                local regen_code=$?
+                set -e
+
+                if [[ $regen_code -eq 0 ]]; then
+                    set +e
+                    output=$(quilt push 2>&1)
+                    exit_code=$?
+                    set -e
+                    echo "$output"
+                    if [[ $exit_code -eq 0 ]]; then
+                        echo "Successfully applied regenerated patch: $(quilt top)"
+                        quilt refresh
+                        continue
+                    fi
+                fi
+                echo "Regeneration failed for: $next_patch"
+            else
+                echo "Generated patch failed and no @generator found: $next_patch"
+            fi
+
+            # Fall through to standard conflict reporting
+            local conflict_files
+            local missing_files
+            conflict_files=($(parse_conflict_files "$output" || true))
+            missing_files=($(parse_missing_files "$output" || true))
+
+            if [[ ${#conflict_files[@]} -gt 0 ]]; then
+                echo ""
+                echo "Files with conflicts:"
+                for file in "${conflict_files[@]}"; do
+                    echo "- $PATCHED_SRC_DIR/$file"
+                done
+            fi
+
+            echo ""
+            echo "Required actions:"
+            echo "1. Regenerate the patch manually"
+            echo "2. Then run the prepare-src script again to continue"
+            echo ""
+            popd
+            exit 1
+        fi
+
+        # --- Standard path: apply with force, halt on conflict ---
         local output
-        set +e  # Disable exit on error
+        set +e
         output=$(quilt push -f -m 2>&1)
         local exit_code=$?
-        set -e  # Re-enable exit on error
+        set -e
         
         echo "$output"
         
-        # Parse conflicts and missing files
         local conflict_files
         local missing_files
         conflict_files=($(parse_conflict_files "$output" || true))
@@ -288,6 +417,16 @@ rebase() {
         fi
         
     done
+
+    # Report removed patches
+    if [[ ${#removed_patches[@]} -gt 0 ]]; then
+        echo ""
+        echo "Auto-removed ${#removed_patches[@]} expired patch(es):"
+        for p in "${removed_patches[@]}"; do
+            echo "  - $p"
+        done
+        echo "Remember to commit the updated series file(s) and remove the .diff file(s)."
+    fi
     
     echo "All patches applied successfully"
     popd

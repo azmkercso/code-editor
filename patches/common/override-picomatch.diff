@@ -1,6 +1,10 @@
-Override picomatch to ^4.0.4 (top-level) and ^2.3.2 (nested for 2.x consumers)
-to address CVE-2026-33671 (high) and CVE-2026-33672 (medium).
+Override picomatch to ^4.0.4 (top-level) and ^2.3.2 (nested for 2.x consumers).
 Uses nested overrides because the dependency tree spans major versions 2.x and 4.x.
+
+@generated
+@generator: scripts/apply-override.sh --patch common/override-picomatch.diff --override 'global:picomatch=^4.0.4' --override 'nested:anymatch:picomatch=^2.3.2' --override 'nested:micromatch:picomatch=^2.3.2' --override 'nested:readdirp:picomatch=^2.3.2' --override 'remote/package.json@global:picomatch=^4.0.4'
+@override-package: picomatch@^4.0.4
+@override-package: picomatch@^2.3.2
 
 Index: b/package.json
 ===================================================================

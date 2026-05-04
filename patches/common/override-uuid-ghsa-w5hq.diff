@@ -1,4 +1,8 @@
-Override uuid to ^14.0.0
+Override uuid to ^14.0.0.
+
+@generated
+@generator: scripts/apply-override.sh --patch common/override-uuid-ghsa-w5hq.diff --override 'global:uuid=^14.0.0' --override 'remote/package.json@global:uuid=^14.0.0'
+@override-package: uuid@^14.0.0
 
 Index: b/package.json
 ===================================================================

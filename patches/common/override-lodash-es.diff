@@ -1,5 +1,8 @@
-Override lodash-es to ^4.18.0 to address CVE-2026-4800 (critical)
-and CVE-2026-2950 (medium).
+Override lodash-es to ^4.18.0.
+
+@generated
+@generator: scripts/apply-override.sh --patch common/override-lodash-es.diff --override 'global:lodash-es=^4.18.0' --override 'remote/package.json@global:lodash-es=^4.18.0'
+@override-package: lodash-es@^4.18.0
 
 Index: b/package.json
 ===================================================================
