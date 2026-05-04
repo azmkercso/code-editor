@@ -7,7 +7,10 @@ common/trusted-domains.diff
 common/allow-unused-vars.diff
 common/heartbeat.diff
 common/installer.diff
-common/remove-builtin-extensions.diff
+common/exclude-settings-by-pattern.diff
+common/disable-copilot-features.diff
+common/remove-merge-editor-settings.diff
+common/exclude-actions-by-pattern.diff
 common/remove-vsda.diff
 common/embedded-api.diff
 common/remove-disable-prompting-for-non-trusted-urls-option.diff

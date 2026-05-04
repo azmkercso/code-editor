@@ -1,0 +1,160 @@
+Disable GitHub Copilot features and AI telemetry
+
+Inlines the IExperimentationFilterProvider interface to remove the tas-client
+dependency, disables Copilot extension version tracking, forces chat
+entitlement to hidden, defaults AI edit telemetry stats to false, and marks
+the mermaid-chat-features extension as not included.
+
+Index: b/extensions/mermaid-chat-features/package.json
+===================================================================
+--- a/extensions/mermaid-chat-features/package.json
++++ b/extensions/mermaid-chat-features/package.json
+@@ -75,7 +75,8 @@
+           "type": "boolean",
+           "default": true,
+           "description": "%config.enabled.description%",
+-          "scope": "application"
++          "scope": "application",
++          "included": false
+         }
+       }
+     },
+Index: b/src/vs/workbench/contrib/chat/browser/chatParticipant.contribution.ts
+===================================================================
+--- a/src/vs/workbench/contrib/chat/browser/chatParticipant.contribution.ts
++++ b/src/vs/workbench/contrib/chat/browser/chatParticipant.contribution.ts
+@@ -77,7 +77,7 @@ const chatViewDescriptor: IViewDescripto
+ 		ChatContextKeys.extensionInvalid
+ 	)
+ };
+-Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([chatViewDescriptor], chatViewContainer);
++// Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([chatViewDescriptor], chatViewContainer);
+ 
+ const chatParticipantExtensionPoint = extensionsRegistry.ExtensionsRegistry.registerExtensionPoint<IRawChatParticipantContribution[]>({
+ 	extensionPoint: 'chatParticipants',
+Index: b/src/vs/workbench/contrib/editTelemetry/browser/editTelemetryContribution.ts
+===================================================================
+--- a/src/vs/workbench/contrib/editTelemetry/browser/editTelemetryContribution.ts
++++ b/src/vs/workbench/contrib/editTelemetry/browser/editTelemetryContribution.ts
+@@ -38,7 +38,7 @@ export class EditTelemetryContribution e
+ 			r.store.add(instantiationService.createInstance(EditTrackingFeature, workspace.read(r), annotatedDocuments.read(r)));
+ 		}));
+ 
+-		const aiStatsEnabled = observableConfigValue(AI_STATS_SETTING_ID, true, configurationService);
++		const aiStatsEnabled = observableConfigValue(AI_STATS_SETTING_ID, false, configurationService);
+ 		this._register(autorun(r => {
+ 			const enabled = aiStatsEnabled.read(r);
+ 			const aiDisabled = chatEntitlementService.sentimentObs.read(r).hidden;
+Index: b/src/vs/workbench/services/assignment/common/assignmentFilters.ts
+===================================================================
+--- a/src/vs/workbench/services/assignment/common/assignmentFilters.ts
++++ b/src/vs/workbench/services/assignment/common/assignmentFilters.ts
+@@ -3,8 +3,14 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 
+-import type { IExperimentationFilterProvider } from 'tas-client';
+-import { Emitter } from '../../../../base/common/event.js';
++import { Emitter, Event } from '../../../../base/common/event.js';
++
++// Inline interface to avoid tas-client dependency
++interface IExperimentationFilterProvider {
++	getFilterValue(filter: string): string | null;
++	getFilters(): Map<string, string | null>;
++	onDidChangeFilters?: Event<void>;
++}
+ import { Disposable } from '../../../../base/common/lifecycle.js';
+ import { getInternalOrg } from '../../../../platform/assignment/common/assignment.js';
+ import { IDefaultAccountService } from '../../../../platform/defaultAccount/common/defaultAccount.js';
+@@ -101,11 +107,12 @@ export class CopilotAssignmentFilterProv
+ 		this.copilotIsSn = this._storageService.get(StorageVersionKeys.CopilotIsSn, StorageScope.PROFILE);
+ 		this.copilotIsFcv1 = this._storageService.get(StorageVersionKeys.CopilotIsFcv1, StorageScope.PROFILE);
+ 
+-		this._register(this._extensionService.onDidChangeExtensionsStatus(extensionIdentifiers => {
+-			if (extensionIdentifiers.some(identifier => ExtensionIdentifier.equals(identifier, 'github.copilot') || ExtensionIdentifier.equals(identifier, 'github.copilot-chat'))) {
+-				this.updateExtensionVersions();
+-			}
+-		}));
++		// Disabled: GitHub Copilot extensions are not included in this build
++		// this._register(this._extensionService.onDidChangeExtensionsStatus(extensionIdentifiers => {
++		// 	if (extensionIdentifiers.some(identifier => ExtensionIdentifier.equals(identifier, 'github.copilot') || ExtensionIdentifier.equals(identifier, 'github.copilot-chat'))) {
++		// 		this.updateExtensionVersions();
++		// 	}
++		// }));
+ 
+ 		this._register(this._chatEntitlementService.onDidChangeEntitlement(() => {
+ 			this.updateCopilotEntitlementInfo();
+@@ -115,45 +122,15 @@ export class CopilotAssignmentFilterProv
+ 			this.updateCopilotTokenInfo();
+ 		}));
+ 
+-		this.updateExtensionVersions();
++		// Disabled: GitHub Copilot extensions are not included in this build
++		// this.updateExtensionVersions();
+ 		this.updateCopilotEntitlementInfo();
+ 		this.updateCopilotTokenInfo();
+ 	}
+ 
+ 	private async updateExtensionVersions() {
+-		let copilotExtensionVersion;
+-		let copilotChatExtensionVersion;
+-		let copilotCompletionsVersion;
+-
+-		try {
+-			const [copilotExtension, copilotChatExtension] = await Promise.all([
+-				this._extensionService.getExtension('github.copilot'),
+-				this._extensionService.getExtension('github.copilot-chat'),
+-			]);
+-
+-			copilotExtensionVersion = copilotExtension?.version;
+-			copilotChatExtensionVersion = copilotChatExtension?.version;
+-			copilotCompletionsVersion = (copilotChatExtension as typeof copilotChatExtension & { completionsCoreVersion?: string })?.completionsCoreVersion;
+-		} catch (error) {
+-			this._logService.error('Failed to update extension version assignments', error);
+-		}
+-
+-		if (this.copilotCompletionsVersion === copilotCompletionsVersion &&
+-			this.copilotExtensionVersion === copilotExtensionVersion &&
+-			this.copilotChatExtensionVersion === copilotChatExtensionVersion) {
+-			return;
+-		}
+-
+-		this.copilotExtensionVersion = copilotExtensionVersion;
+-		this.copilotChatExtensionVersion = copilotChatExtensionVersion;
+-		this.copilotCompletionsVersion = copilotCompletionsVersion;
+-
+-		this._storageService.store(StorageVersionKeys.CopilotExtensionVersion, this.copilotExtensionVersion, StorageScope.PROFILE, StorageTarget.MACHINE);
+-		this._storageService.store(StorageVersionKeys.CopilotChatExtensionVersion, this.copilotChatExtensionVersion, StorageScope.PROFILE, StorageTarget.MACHINE);
+-		this._storageService.store(StorageVersionKeys.CompletionsVersion, this.copilotCompletionsVersion, StorageScope.PROFILE, StorageTarget.MACHINE);
+-
+-		// Notify that the filters have changed.
+-		this._onDidChangeFilters.fire();
++		// Disabled: GitHub Copilot extensions are not included in this build
++		return;
+ 	}
+ 
+ 	private updateCopilotEntitlementInfo() {
+Index: b/src/vs/workbench/services/chat/common/chatEntitlementService.ts
+===================================================================
+--- a/src/vs/workbench/services/chat/common/chatEntitlementService.ts
++++ b/src/vs/workbench/services/chat/common/chatEntitlementService.ts
+@@ -1080,14 +1080,11 @@ export class ChatEntitlementContext exte
+ 	}
+ 
+ 	private withConfiguration(state: IChatEntitlementContextState): IChatEntitlementContextState {
+-		if (this.configurationService.getValue(ChatEntitlementContext.CHAT_DISABLED_CONFIGURATION_KEY) === true) {
+-			return {
+-				...state,
+-				hidden: true // Setting always wins: if AI is disabled, set `hidden: true`
+-			};
+-		}
+-
+-		return state;
++		// Always hide AI features in this build
++		return {
++			...state,
++			hidden: true
++		};
+ 	}
+ 
+ 	update(context: { installed: boolean; disabled: boolean; untrusted: boolean }): Promise<void>;

@@ -12,5 +12,8 @@
   "target": "code-editor-server",
   "ignoredErrors": {
     "path": null
+  },
+  "testPatches": {
+    "path": "patches/test/common-testing.series"
   }
 }

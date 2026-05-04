@@ -12,5 +12,8 @@
   "target": "code-editor-web-embedded-with-terminal",
   "ignoredErrors": {
     "path": null
+  },
+  "testPatches": {
+    "path": "patches/test/common-testing.series"
   }
 }

@@ -12,5 +12,8 @@
   "target": "code-editor-web-embedded",
   "ignoredErrors": {
     "path": null
+  },
+  "testPatches": {
+    "path": "patches/test/common-testing.series"
   }
 }
