@@ -243,7 +243,7 @@ Index: code-editor-src/build/gulpfile.extensions.ts
 ===================================================================
 --- code-editor-src.orig/build/gulpfile.extensions.ts
 +++ code-editor-src/build/gulpfile.extensions.ts
-@@ -87,6 +87,7 @@ const compilations = [
+@@ -88,6 +88,7 @@ const compilations = [
  	'extensions/simple-browser/tsconfig.json',
  	'extensions/sagemaker-extension/tsconfig.json',
  	'extensions/sagemaker-idle-extension/tsconfig.json',
@@ -255,7 +255,7 @@ Index: code-editor-src/build/npm/dirs.ts
 ===================================================================
 --- code-editor-src.orig/build/npm/dirs.ts
 +++ code-editor-src/build/npm/dirs.ts
-@@ -44,6 +44,7 @@ export const dirs = [
+@@ -46,6 +46,7 @@ export const dirs = [
  	'extensions/references-view',
  	'extensions/sagemaker-extension',
  	'extensions/sagemaker-idle-extension',

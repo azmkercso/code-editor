@@ -5,11 +5,11 @@ adds excludedSettingPatterns to the IProductConfiguration interface in product.t
 and modifies configurationRegistry.ts to route pattern-matched settings to
 excludedConfigurationProperties (hidden from the Settings UI).
 
-Index: b/product.json
+Index: code-editor-src/product.json
 ===================================================================
---- a/product.json
-+++ b/product.json
-@@ -71,5 +71,26 @@
+--- code-editor-src.orig/product.json
++++ code-editor-src/product.json
+@@ -150,5 +150,26 @@
  		"https://console.amazonaws.cn",
  		"https://aws.amazon.com",
  		"https://*.amazon.com"
@@ -36,11 +36,11 @@ Index: b/product.json
 +		"workbench.action.edits."
  	]
  }
-Index: b/src/vs/base/common/product.ts
+Index: code-editor-src/src/vs/base/common/product.ts
 ===================================================================
---- a/src/vs/base/common/product.ts
-+++ b/src/vs/base/common/product.ts
-@@ -137,6 +137,7 @@ export interface IProductConfiguration {
+--- code-editor-src.orig/src/vs/base/common/product.ts
++++ code-editor-src/src/vs/base/common/product.ts
+@@ -142,6 +142,7 @@ export interface IProductConfiguration {
  	readonly languageExtensionTips?: readonly string[];
  	readonly trustedExtensionUrlPublicKeys?: IStringDictionary<string[]>;
  	readonly trustedExtensionAuthAccess?: string[] | IStringDictionary<string[]>;
@@ -48,10 +48,10 @@ Index: b/src/vs/base/common/product.ts
  	readonly trustedMcpAuthAccess?: string[] | IStringDictionary<string[]>;
  	readonly inheritAuthAccountPreference?: IStringDictionary<string[]>;
  	readonly trustedExtensionProtocolHandlers?: readonly string[];
-Index: b/src/vs/platform/configuration/common/configurationRegistry.ts
+Index: code-editor-src/src/vs/platform/configuration/common/configurationRegistry.ts
 ===================================================================
---- a/src/vs/platform/configuration/common/configurationRegistry.ts
-+++ b/src/vs/platform/configuration/common/configurationRegistry.ts
+--- code-editor-src.orig/src/vs/platform/configuration/common/configurationRegistry.ts
++++ code-editor-src/src/vs/platform/configuration/common/configurationRegistry.ts
 @@ -530,8 +530,7 @@ class ConfigurationRegistry extends Disp
  			source,
  			defaultValueSource: source

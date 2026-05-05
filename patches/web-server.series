@@ -19,16 +19,9 @@ common/service-worker-fix.diff
 common/proposed-api.diff
 common/build.diff
 common/integration.diff
-common/fix-ts-rootdir-webpack.diff
-common/override-undici.diff
 common/override-electron.diff
-common/override-braces.diff
 common/override-postcss.diff
-common/override-tootallnate-once.diff
-common/fix-chat-debug-editor-visibility.diff
 common/guard-default-account-config.diff
-common/override-picomatch.diff
-common/override-lodash-es.diff
 common/override-follow-redirects.diff
 common/override-uuid-ghsa-w5hq.diff
 common/skip-mangling-for-dev-builds.diff

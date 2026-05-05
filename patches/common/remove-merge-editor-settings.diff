@@ -3,11 +3,11 @@ Remove merge editor settings from the Settings UI
 The merge editor is not used in Code Editor. This removes the Merge Editor
 group from the Features section of the Settings UI.
 
-Index: b/src/vs/workbench/contrib/preferences/browser/settingsLayout.ts
+Index: code-editor-src/src/vs/workbench/contrib/preferences/browser/settingsLayout.ts
 ===================================================================
---- a/src/vs/workbench/contrib/preferences/browser/settingsLayout.ts
-+++ b/src/vs/workbench/contrib/preferences/browser/settingsLayout.ts
-@@ -365,11 +365,6 @@ export const tocData: ITOCEntry<string>
+--- code-editor-src.orig/src/vs/workbench/contrib/preferences/browser/settingsLayout.ts
++++ code-editor-src/src/vs/workbench/contrib/preferences/browser/settingsLayout.ts
+@@ -370,11 +370,6 @@ export const tocData: ITOCEntry<string>
  					settings: ['notebook.*', 'interactiveWindow.*']
  				},
  				{

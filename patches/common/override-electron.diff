@@ -7,11 +7,11 @@ Index: code-editor-src/package.json
 ===================================================================
 --- code-editor-src.orig/package.json
 +++ code-editor-src/package.json
-@@ -173,7 +173,7 @@
-     "css-loader": "^6.9.1",
+@@ -191,7 +191,7 @@
+     "cookie": "^0.7.2",
      "debounce": "^1.0.0",
      "deemon": "^1.13.6",
--    "electron": "39.6.0",
+-    "electron": "39.8.8",
 +    "electron": "40.6.0",
      "eslint": "^9.36.0",
      "eslint-formatter-compact": "^8.40.0",

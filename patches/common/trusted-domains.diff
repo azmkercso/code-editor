@@ -98,12 +98,11 @@ Index: code-editor-src/product.json
 ===================================================================
 --- code-editor-src.orig/product.json
 +++ code-editor-src/product.json
-@@ -155,5 +155,16 @@
- 		"github-enterprise": [
- 			"GitHub.copilot-chat"
- 		]
--	}
-+	},
+@@ -233,5 +233,16 @@
+ 	],
+ 	"builtInExtensionsEnabledWithAutoUpdates": [
+ 		"GitHub.copilot-chat"
++	],
 +	"linkProtectionTrustedDomains": [
 +		"https://docs.aws.amazon.com",
 +		"https://docs.amazonaws.cn",
@@ -114,5 +113,5 @@ Index: code-editor-src/product.json
 +		"https://console.amazonaws.cn",
 +		"https://aws.amazon.com",
 +		"https://*.amazon.com"
-+	]
+ 	]
  }

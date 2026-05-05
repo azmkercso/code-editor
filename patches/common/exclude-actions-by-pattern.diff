@@ -3,11 +3,11 @@ Exclude action registrations by pattern from product.json
 Adds pattern-based filtering to registerAction2 and MenuRegistry.appendMenuItem.
 Actions whose command ID matches a prefix in product.json excludedActionPatterns
 are silently dropped — no command, menu entry, or keybinding is registered.
-Index: b/src/vs/base/common/product.ts
+Index: code-editor-src/src/vs/base/common/product.ts
 ===================================================================
---- a/src/vs/base/common/product.ts
-+++ b/src/vs/base/common/product.ts
-@@ -138,6 +138,7 @@ export interface IProductConfiguration {
+--- code-editor-src.orig/src/vs/base/common/product.ts
++++ code-editor-src/src/vs/base/common/product.ts
+@@ -143,6 +143,7 @@ export interface IProductConfiguration {
  	readonly trustedExtensionUrlPublicKeys?: IStringDictionary<string[]>;
  	readonly trustedExtensionAuthAccess?: string[] | IStringDictionary<string[]>;
  	readonly excludedSettingPatterns?: readonly string[];
@@ -15,10 +15,10 @@ Index: b/src/vs/base/common/product.ts
  	readonly trustedMcpAuthAccess?: string[] | IStringDictionary<string[]>;
  	readonly inheritAuthAccountPreference?: IStringDictionary<string[]>;
  	readonly trustedExtensionProtocolHandlers?: readonly string[];
-Index: b/src/vs/platform/actions/common/actions.ts
+Index: code-editor-src/src/vs/platform/actions/common/actions.ts
 ===================================================================
---- a/src/vs/platform/actions/common/actions.ts
-+++ b/src/vs/platform/actions/common/actions.ts
+--- code-editor-src.orig/src/vs/platform/actions/common/actions.ts
++++ code-editor-src/src/vs/platform/actions/common/actions.ts
 @@ -14,6 +14,7 @@ import { CommandsRegistry, ICommandServi
  import { ContextKeyExpr, ContextKeyExpression, IContextKeyService } from '../../contextkey/common/contextkey.js';
  import { createDecorator, ServicesAccessor } from '../../instantiation/common/instantiation.js';
@@ -27,7 +27,7 @@ Index: b/src/vs/platform/actions/common/actions.ts
  
  export interface IMenuItem {
  	command: ICommandAction;
-@@ -479,6 +480,9 @@ export const MenuRegistry: IMenuRegistry
+@@ -488,6 +489,9 @@ export const MenuRegistry: IMenuRegistry
  	}
  
  	appendMenuItem(id: MenuId, item: IMenuItem | ISubmenuItem): IDisposable {
@@ -37,7 +37,7 @@ Index: b/src/vs/platform/actions/common/actions.ts
  		let list = this._menuItems.get(id);
  		if (!list) {
  			list = new LinkedList();
-@@ -703,6 +707,10 @@ export function registerAction2(ctor: {
+@@ -712,6 +716,10 @@ export function registerAction2(ctor: {
  
  	const { f1, menu, keybinding, ...command } = action.desc;
  
@@ -48,7 +48,7 @@ Index: b/src/vs/platform/actions/common/actions.ts
  	if (CommandsRegistry.getCommand(command.id)) {
  		throw new Error(`Cannot register two commands with the same id: ${command.id}`);
  	}
-@@ -751,4 +759,12 @@ export function registerAction2(ctor: {
+@@ -760,4 +768,12 @@ export function registerAction2(ctor: {
  		}
  	};
  }

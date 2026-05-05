@@ -75,15 +75,15 @@ Index: code-editor-src/src/vs/workbench/browser/web.main.ts
 ===================================================================
 --- code-editor-src.orig/src/vs/workbench/browser/web.main.ts
 +++ code-editor-src/src/vs/workbench/browser/web.main.ts
-@@ -98,6 +98,7 @@ import { INotificationService, Severity
+@@ -99,6 +99,7 @@ import { INotificationService, Severity
  import { IDefaultAccountService } from '../../platform/defaultAccount/common/defaultAccount.js';
  import { DefaultAccountService } from '../services/accounts/browser/defaultAccount.js';
- import { AccountPolicyService } from '../services/policies/common/accountPolicyService.js';
+ import { AccountPolicyService, IAccountPolicyGateService } from '../services/policies/common/accountPolicyService.js';
 +import { SagemakerServerClient } from '../../workbench/browser/client.js';
  
- export class BrowserMain extends Disposable {
- 
-@@ -133,6 +134,9 @@ export class BrowserMain extends Disposa
+ export interface IBrowserMainWorkbench {
+ 	startup(): IInstantiationService;
+@@ -140,6 +141,9 @@ export class BrowserMain extends Disposa
  		// Startup
  		const instantiationService = workbench.startup();
  

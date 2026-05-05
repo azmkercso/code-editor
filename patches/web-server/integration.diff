@@ -4,10 +4,10 @@ Adds the Open VSX gallery service URLs to product.json, adds OIDC and
 SSO device authorization domains to the trusted domains list, and updates
 the welcome page branding.
 
-Index: b/product.json
+Index: code-editor-src/product.json
 ===================================================================
---- a/product.json
-+++ b/product.json
+--- code-editor-src.orig/product.json
++++ code-editor-src/product.json
 @@ -1,4 +1,14 @@
  {
 +	"extensionsGallery": {
@@ -23,7 +23,7 @@ Index: b/product.json
  	"nameShort": "Code Editor",
  	"nameLong": "Code Editor",
  	"codeEditorVersion": "1.0.0",
-@@ -71,7 +81,10 @@
+@@ -150,7 +160,10 @@
  		"https://console.amazonaws-us-gov.com",
  		"https://console.amazonaws.cn",
  		"https://aws.amazon.com",
@@ -35,11 +35,11 @@ Index: b/product.json
  	],
  	"excludedSettingPatterns": [
  		"chat.",
-Index: b/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
+Index: code-editor-src/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
 ===================================================================
---- a/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
-+++ b/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
-@@ -920,8 +920,8 @@ export class GettingStartedPage extends
+--- code-editor-src.orig/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
++++ code-editor-src/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
+@@ -921,8 +921,8 @@ export class GettingStartedPage extends
  		}));
  
  		const header = $('.header', {},
@@ -50,10 +50,10 @@ Index: b/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.t
  		);
  
  		const leftColumn = $('.categories-column.categories-column-left', {},);
-Index: b/src/vs/nls.ts
+Index: code-editor-src/src/vs/nls.ts
 ===================================================================
---- a/src/vs/nls.ts
-+++ b/src/vs/nls.ts
+--- code-editor-src.orig/src/vs/nls.ts
++++ code-editor-src/src/vs/nls.ts
 @@ -47,6 +47,7 @@ function _format(message: string, args:
  		// FF3B and FF3D is the Unicode zenkaku representation for [ and ]
  		result = '\uFF3B' + result.replace(/[aouei]/g, '$&$&') + '\uFF3D';
@@ -62,10 +62,10 @@ Index: b/src/vs/nls.ts
  
  	return result;
  }
-Index: b/src/vs/workbench/api/common/extHostLocalizationService.ts
+Index: code-editor-src/src/vs/workbench/api/common/extHostLocalizationService.ts
 ===================================================================
---- a/src/vs/workbench/api/common/extHostLocalizationService.ts
-+++ b/src/vs/workbench/api/common/extHostLocalizationService.ts
+--- code-editor-src.orig/src/vs/workbench/api/common/extHostLocalizationService.ts
++++ code-editor-src/src/vs/workbench/api/common/extHostLocalizationService.ts
 @@ -46,7 +46,9 @@ export class ExtHostLocalizationService
  		if (!str) {
  			this.logService.warn(`Using default string since no string found in i18n bundle that has the key: ${key}`);
@@ -77,10 +77,10 @@ Index: b/src/vs/workbench/api/common/extHostLocalizationService.ts
  	}
  
  	getBundle(extensionId: string): { [key: string]: string } | undefined {
-Index: b/extensions/git/package.nls.json
+Index: code-editor-src/extensions/git/package.nls.json
 ===================================================================
---- a/extensions/git/package.nls.json
-+++ b/extensions/git/package.nls.json
+--- code-editor-src.orig/extensions/git/package.nls.json
++++ code-editor-src/extensions/git/package.nls.json
 @@ -257,7 +257,7 @@
  		"message": "List of git commands (ex: commit, push) that would have their `stdout` logged to the [git output](command:git.showOutput). If the git command has a client-side hook configured, the client-side hook's `stdout` will also be logged to the [git output](command:git.showOutput).",
  		"comment": [
@@ -249,10 +249,10 @@ Index: b/extensions/git/package.nls.json
 -	"view.workbench.learnMore": "To learn more about how to use Git and source control in VS Code [read our docs](https://aka.ms/vscode-scm)."
 +	"view.workbench.learnMore": "To learn more about how to use Git and source control in Code-OSS [read our docs](https://aka.ms/vscode-scm)."
  }
-Index: b/src/vs/workbench/contrib/welcomeGettingStarted/common/gettingStartedContent.ts
+Index: code-editor-src/src/vs/workbench/contrib/welcomeGettingStarted/common/gettingStartedContent.ts
 ===================================================================
---- a/src/vs/workbench/contrib/welcomeGettingStarted/common/gettingStartedContent.ts
-+++ b/src/vs/workbench/contrib/welcomeGettingStarted/common/gettingStartedContent.ts
+--- code-editor-src.orig/src/vs/workbench/contrib/welcomeGettingStarted/common/gettingStartedContent.ts
++++ code-editor-src/src/vs/workbench/contrib/welcomeGettingStarted/common/gettingStartedContent.ts
 @@ -287,8 +287,8 @@ export const walkthroughs: GettingStarte
  
  	{
@@ -264,11 +264,11 @@ Index: b/src/vs/workbench/contrib/welcomeGettingStarted/common/gettingStartedCon
  		isFeatured: true,
  		icon: setupIcon,
  		when: 'isWeb',
-Index: b/src/vs/workbench/workbench.common.main.ts
+Index: code-editor-src/src/vs/workbench/workbench.common.main.ts
 ===================================================================
---- a/src/vs/workbench/workbench.common.main.ts
-+++ b/src/vs/workbench/workbench.common.main.ts
-@@ -357,8 +357,6 @@ import './contrib/surveys/browser/langua
+--- code-editor-src.orig/src/vs/workbench/workbench.common.main.ts
++++ code-editor-src/src/vs/workbench/workbench.common.main.ts
+@@ -370,8 +370,6 @@ import './contrib/surveys/browser/langua
  
  // Welcome
  import './contrib/welcomeGettingStarted/browser/gettingStarted.contribution.js';
