@@ -9,7 +9,7 @@ Index: code-editor-src/product.json
 ===================================================================
 --- code-editor-src.orig/product.json
 +++ code-editor-src/product.json
-@@ -150,5 +150,26 @@
+@@ -150,5 +150,27 @@
  		"https://console.amazonaws.cn",
  		"https://aws.amazon.com",
  		"https://*.amazon.com"
@@ -23,6 +23,7 @@ Index: code-editor-src/product.json
 +		"github.copilot",
 +		"terminal.integrated.chat.",
 +		"ai.",
++		"git.addAICoAuthor",
 +		"workbench.commandPalette.experimental.chat"
 +	],
 +	"excludedActionPatterns": [
