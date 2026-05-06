@@ -17,7 +17,7 @@ Index: code-editor-src/test/automation/src/quickaccess.ts
  
  enum QuickAccessKind {
  	Files = 1,
-@@ -110,13 +110,6 @@ export class QuickAccess {
+@@ -117,13 +117,6 @@ export class QuickAccess {
  	}
  
  	async openFile(path: string): Promise<void> {
