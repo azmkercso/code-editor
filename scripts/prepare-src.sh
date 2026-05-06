@@ -463,7 +463,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-PATCHED_SRC_DIR="$PRESENT_WORKING_DIR/code-editor-src"
+PATCHED_SRC_DIR="${PATCHED_SRC_DIR:-$PRESENT_WORKING_DIR/code-editor-src}"
 CONFIG_FILE="$PRESENT_WORKING_DIR/configuration/$TARGET.json"
 
 # Check if config file exists

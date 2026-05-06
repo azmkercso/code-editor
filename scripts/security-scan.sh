@@ -122,7 +122,16 @@ generate_additional_sboms() {
     cd - > /dev/null
     echo "Generated SBOM for semver package"
     
-    # 3. Generate SBOM for Node.js linux-x64 binary
+    # 3. Generate SBOM for unit-tests
+    echo "Generating SBOM for unit-tests"
+    
+    unit_tests_dir="$root_dir/unit-tests"
+    cd "$unit_tests_dir"
+    cyclonedx-npm --omit dev --output-reproducible --spec-version 1.5 -o "$root_dir/additional-node-js-sboms/unit-tests-sbom.json"
+    cd - > /dev/null
+    echo "Generated SBOM for unit-tests"
+    
+    # 4. Generate SBOM for Node.js linux-x64 binary
     echo "Generating SBOM for Node.js linux-x64 binary"
     
     # Read Node.js version from .npmrc file
@@ -133,7 +142,7 @@ generate_additional_sboms() {
     syft "$node_x64_dir" -o cyclonedx-json@1.5="$root_dir/additional-node-js-sboms/nodejs-x64-sbom.json"
     echo "Generated SBOM for Node.js x64 binary"
     
-    # 4. Generate SBOM for Node.js linux-arm64 binary
+    # 5. Generate SBOM for Node.js linux-arm64 binary
     echo "Generating SBOM for Node.js linux-arm64 binary"
     
     node_arm64_dir="nodejs-binaries/node-v$NODE_VERSION-linux-arm64"
