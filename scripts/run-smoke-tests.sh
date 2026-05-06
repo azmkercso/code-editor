@@ -3,11 +3,16 @@
 #
 # Prerequisites:
 #   - Build artifacts at vscode-reh-web-linux-x64/ (run a dev-build first)
-#   - Patched source at code-editor-src/ (from prepare-src.sh)
-#   - System: node 22+, npm, quilt, curl, chromium-compatible OS
+#   - Patched source at code-editor-src/ with dependencies installed
+#   - System: node 22+, npm, quilt, curl, chromium-compatible browser deps
 #
 # Usage:
-#   ./scripts/run-smoke-tests.sh [--skip-prepare] [--grep <pattern>]
+#   ./scripts/run-smoke-tests.sh [OPTIONS]
+#
+# Options:
+#   --skip-patches    Skip applying test patches (use if already applied)
+#   --skip-compile    Skip compiling smoke tests (use if already compiled)
+#   --grep PATTERN    Only run tests matching PATTERN
 
 set -euo pipefail
 
@@ -17,14 +22,16 @@ BUILD_DIR="$ROOT_DIR/vscode-reh-web-linux-x64"
 SRC_DIR="$ROOT_DIR/code-editor-src"
 SERVER_PORT=9888
 SERVER_PID=""
-SKIP_PREPARE=false
+SKIP_PATCHES=false
+SKIP_COMPILE=false
 GREP_PATTERN=""
 
-for arg in "$@"; do
-  case "$arg" in
-    --skip-prepare) SKIP_PREPARE=true ;;
-    --grep) shift; GREP_PATTERN="$1" ;;
-    *) ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-patches) SKIP_PATCHES=true; shift ;;
+    --skip-compile) SKIP_COMPILE=true; shift ;;
+    --grep) GREP_PATTERN="$2"; shift 2 ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
 
@@ -40,48 +47,61 @@ trap cleanup EXIT
 
 if [ ! -f "$BUILD_DIR/bin/code-editor-server" ]; then
   echo "ERROR: Build artifacts not found at vscode-reh-web-linux-x64/"
-  echo ""
-  echo "Run a dev-build of the sagemaker target first:"
-  echo "  ./scripts/prepare-src.sh code-editor-sagemaker-server"
-  echo "  cd code-editor-src && npm ci && npm run gulp vscode-reh-web-linux-x64"
+  echo "Run a dev-build first."
   exit 1
 fi
 
-if [ ! -f "$SRC_DIR/product.json" ]; then
-  echo "ERROR: Patched source not found at code-editor-src/"
-  echo ""
-  echo "Run prepare-src.sh first:"
-  echo "  ./scripts/prepare-src.sh code-editor-sagemaker-server"
+if [ ! -d "$SRC_DIR/node_modules" ]; then
+  echo "ERROR: node_modules not found in code-editor-src/"
+  echo "Run: cd code-editor-src && npm ci"
   exit 1
 fi
 
 # --- Apply test patches ---
 
-if [ "$SKIP_PREPARE" = false ]; then
+if [ "$SKIP_PATCHES" = false ]; then
   echo "=== Applying test patches ==="
   cd "$SRC_DIR"
-  rm -rf .pc
+  # Remove any existing test quilt state
+  if [ -d .pc ]; then
+    QUILT_PATCHES=../patches/test QUILT_SERIES=../patches/test/sagemaker-testing.series quilt pop -af 2>/dev/null || true
+    rm -rf .pc
+  fi
+  # Restore files modified by test patches to upstream state
+  # (they may have been baked into code-editor-src from a previous run)
+  THIRD_PARTY="$ROOT_DIR/third-party-src"
+  if [ -d "$THIRD_PARTY/test" ]; then
+    while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      src="$THIRD_PARTY/$f"
+      dst="$SRC_DIR/$f"
+      if [ -f "$src" ]; then
+        cp "$src" "$dst"
+      else
+        rm -f "$dst"
+      fi
+    done < <(grep -h "^Index:" "$ROOT_DIR"/patches/test/*.diff "$ROOT_DIR"/patches/test/sagemaker/*.diff 2>/dev/null | sed 's|^Index: code-editor-src/||')
+  fi
   export QUILT_PATCHES=../patches/test
   export QUILT_SERIES=../patches/test/sagemaker-testing.series
   quilt push -a
 fi
 
-# --- Install dependencies and compile ---
+# --- Install Playwright and compile ---
 
-echo "=== Installing dependencies ==="
-cd "$SRC_DIR"
+if [ "$SKIP_COMPILE" = false ]; then
+  cd "$SRC_DIR"
 
-# Root deps (includes typescript, playwright-core, mocha)
-npm ci 2>&1 | tail -3
+  # Install Playwright browser + system deps
+  echo "=== Installing Playwright ==="
+  npx playwright install --with-deps chromium
 
-# Install playwright browsers
-npm run playwright-install
-
-# Compile smoke tests (compiles automation + smoke via upstream script)
-echo "=== Compiling smoke tests ==="
-cd test/smoke
-npm install
-npm run compile
+  # Compile smoke tests (compiles test/automation + test/smoke)
+  echo "=== Compiling smoke tests ==="
+  cd test/smoke
+  npm install 2>&1 | tail -3
+  npm run compile
+fi
 
 # --- Start server ---
 
@@ -120,4 +140,4 @@ fi
 VSCODE_REMOTE_SERVER_PATH="$BUILD_DIR" \
   node test/index.js --web --headless $EXTRA_ARGS
 
-echo "=== All smoke tests passed ==="
+echo "=== Smoke tests complete ==="

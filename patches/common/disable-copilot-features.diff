@@ -193,7 +193,7 @@ Index: code-editor-src/build/gulpfile.reh.ts
  			.pipe(jsFilter)
  			.pipe(util.stripSourceMappingURL())
  			.pipe(jsFilter.restore);
-@@ -482,23 +482,6 @@ function patchWin32DependenciesTask(dest
+@@ -482,16 +482,6 @@ function patchWin32DependenciesTask(dest
  	};
  }
  
@@ -207,17 +207,10 @@ Index: code-editor-src/build/gulpfile.reh.ts
 -	};
 -}
 -
--/**
-- * @param product The parsed product.json file contents
-- */
--function tweakProductForServerWeb(product: typeof import('../product.json')) {
--	const result: typeof product & { webEndpointUrlTemplate?: string } = { ...product };
--	delete result.webEndpointUrlTemplate;
--	return result;
- }
- 
- ['reh', 'reh-web'].forEach(type => {
-@@ -548,7 +531,6 @@ function tweakProductForServerWeb(produc
+ /**
+  * @param product The parsed product.json file contents
+  */
+@@ -548,7 +538,6 @@ function tweakProductForServerWeb(produc
  				gulp.task(`node-${platform}-${arch}`) as task.Task,
  				util.rimraf(path.join(BUILD_ROOT, destinationFolderName)),
  				packageTask(type, platform, arch, sourceFolderName, destinationFolderName),
@@ -225,7 +218,7 @@ Index: code-editor-src/build/gulpfile.reh.ts
  			];
  
  			if (platform === 'win32') {
-@@ -562,7 +544,6 @@ function tweakProductForServerWeb(produc
+@@ -562,7 +551,6 @@ function tweakProductForServerWeb(produc
  				compileBuildWithManglingTask,
  				cleanExtensionsBuildTask,
  				compileNonNativeExtensionsBuildTask,
@@ -303,12 +296,11 @@ Index: code-editor-src/package.json
      "update-build-ts-version": "npm install -D typescript@next && npm install -D @typescript/native-preview && (cd build && npm run typecheck)",
      "install-local-component-explorer": "npm install ../vscode-packages/js-component-explorer/dist/vscode-component-explorer-0.1.0.tgz ../vscode-packages/js-component-explorer/dist/vscode-component-explorer-cli-0.1.0.tgz --no-save && cd build/rspack && npm install ../../../vscode-packages/js-component-explorer/dist/vscode-component-explorer-webpack-plugin-0.1.0.tgz --no-save && cd ../vite && npm install ../../../vscode-packages/js-component-explorer/dist/vscode-component-explorer-vite-plugin-0.1.0.tgz --no-save",
      "symlink-local-component-explorer": "npm install ../vscode-packages/js-component-explorer/packages/explorer ../vscode-packages/js-component-explorer/packages/cli --no-save && cd build/rspack && npm install ../../../vscode-packages/js-component-explorer/packages/webpack-plugin ../../../vscode-packages/js-component-explorer/packages/explorer --no-save && cd ../vite && npm install ../../../vscode-packages/js-component-explorer/packages/vite-plugin ../../../vscode-packages/js-component-explorer/packages/explorer --no-save",
-@@ -90,8 +85,6 @@
+@@ -90,7 +85,6 @@
    },
    "dependencies": {
      "@anthropic-ai/sandbox-runtime": "0.0.49",
 -    "@github/copilot": "^1.0.34",
--    "@github/copilot-sdk": "^0.2.2",
+     "@github/copilot-sdk": "^0.2.2",
      "@microsoft/1ds-core-js": "^3.2.13",
      "@microsoft/1ds-post-js": "^3.2.13",
-     "@microsoft/dev-tunnels-connections": "^1.3.41",
