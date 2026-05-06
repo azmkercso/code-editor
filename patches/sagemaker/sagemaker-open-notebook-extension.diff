@@ -42,45 +42,6 @@ Index: code-editor-src/src/vs/workbench/contrib/extensions/browser/extensionsWor
  	}
  
  	private async initialize(): Promise<void> {
-Index: code-editor-src/extensions/sagemaker-open-notebook-extension/extension-browser.webpack.config.js
-===================================================================
---- /dev/null
-+++ code-editor-src/extensions/sagemaker-open-notebook-extension/extension-browser.webpack.config.js
-@@ -0,0 +1,13 @@
-+/*---------------------------------------------------------------------------------------------
-+ *  Copyright Amazon.com Inc. or its affiliates. All rights reserved.
-+ *  Licensed under the MIT License. See License.txt in the project root for license information.
-+ *--------------------------------------------------------------------------------------------*/
-+// @ts-check
-+import { browser as withBrowserDefaults } from '../shared.webpack.config.mjs';
-+
-+export default withBrowserDefaults({
-+	context: import.meta.dirname,
-+	entry: {
-+		extension: './src/extension.ts'
-+	},
-+});
-Index: code-editor-src/extensions/sagemaker-open-notebook-extension/extension.webpack.config.js
-===================================================================
---- /dev/null
-+++ code-editor-src/extensions/sagemaker-open-notebook-extension/extension.webpack.config.js
-@@ -0,0 +1,16 @@
-+/*---------------------------------------------------------------------------------------------
-+ *  Copyright Amazon.com Inc. or its affiliates. All rights reserved.
-+ *  Licensed under the MIT License. See License.txt in the project root for license information.
-+ *--------------------------------------------------------------------------------------------*/
-+// @ts-check
-+import withDefaults from '../shared.webpack.config.mjs';
-+
-+export default withDefaults({
-+	context: import.meta.dirname,
-+	resolve: {
-+		mainFields: ['module', 'main']
-+	},
-+	entry: {
-+		extension: './src/extension.ts',
-+	}
-+});
 Index: code-editor-src/extensions/sagemaker-open-notebook-extension/package.json
 ===================================================================
 --- /dev/null

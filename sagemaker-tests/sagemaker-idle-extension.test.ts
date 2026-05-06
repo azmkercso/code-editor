@@ -22,23 +22,6 @@ describe('sagemaker-idle-extension.patch validation', () => {
     console.log('PASS: SageMaker idle extension README found with correct description');
   });
 
-  test('sagemaker-idle-extension should have webpack config', () => {
-    const filePath = join(PATCHED_VSCODE_DIR, 'extensions/sagemaker-idle-extension/extension-browser.webpack.config.js');
-    
-    if (!existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-    
-    const content = readFileSync(filePath, 'utf8');
-    const expectedEntry = "entry: {\n        extension: './src/extension.ts'\n    },";
-    
-    if (!content.includes(expectedEntry)) {
-      throw new Error(`Expected webpack entry not found in ${filePath}`);
-    }
-    
-    console.log('PASS: SageMaker idle extension webpack config found');
-  });
-
   test('sagemaker-idle-extension should have package.json with correct name', () => {
     const filePath = join(PATCHED_VSCODE_DIR, 'extensions/sagemaker-idle-extension/package.json');
     
