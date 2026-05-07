@@ -9,7 +9,7 @@ Index: code-editor-src/product.json
 ===================================================================
 --- code-editor-src.orig/product.json
 +++ code-editor-src/product.json
-@@ -150,5 +150,27 @@
+@@ -150,5 +150,38 @@
  		"https://console.amazonaws.cn",
  		"https://aws.amazon.com",
  		"https://*.amazon.com"
@@ -19,12 +19,23 @@ Index: code-editor-src/product.json
 +		"inlineChat.",
 +		"notebook.experimental.chat",
 +		"accessibility.signals.chat",
++		"accessibility.chat",
++		"accessibility.openChat",
++		"accessibility.verboseChat",
++		"accessibility.verbosity.chat",
++		"accessibility.verbosity.terminalChat",
++		"accessibility.verbosity.inlineChat",
++		"accessibility.verbosity.panelChat",
++		"accessibility.verbosity.sessionsChat",
 +		"workbench.chat.",
++		"workbench.commandPalette.showAskInChat",
 +		"github.copilot",
 +		"terminal.integrated.chat.",
 +		"ai.",
 +		"git.addAICoAuthor",
-+		"workbench.commandPalette.experimental.chat"
++		"workbench.commandPalette.experimental.chat",
++		"workbench.commandPalette.experimental.askChat",
++		"imageCarousel.chat"
 +	],
 +	"excludedActionPatterns": [
 +		"workbench.action.chat.",

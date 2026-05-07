@@ -6,7 +6,7 @@ Index: code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
 ===================================================================
 --- /dev/null
 +++ code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,61 @@
 +/*---------------------------------------------------------------------------------------------
 + *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
 + *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -46,13 +46,20 @@ Index: code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
 +
 +		it('chat settings should be excluded from settings UI', async function () {
 +			const app = this.app as Application;
-+			await app.workbench.settingsEditor.searchSettingsUI('chat.');
-+			// Wait for search to complete, then verify no setting items are shown
-+			// The count widget shows "No Settings Found" or the editor shows .no-results
++			// Search by setting ID prefix to avoid false positives from full-text matches
++			await app.workbench.settingsEditor.searchSettingsUI('@id:chat.');
 +			await new Promise(resolve => setTimeout(resolve, 3000));
 +			const items = await app.code.getElements('.settings-editor .setting-item-bool, .settings-editor .setting-item-text, .settings-editor .setting-item-enum', false);
 +			if (items && items.length > 0) {
-+				throw new Error(`Expected no chat settings, but found ${items.length} setting items`);
++				throw new Error(`Expected no chat.* settings by ID, but found ${items.length} setting items`);
++			}
++
++			// Also verify accessibility chat settings are excluded
++			await app.workbench.settingsEditor.searchSettingsUI('@id:accessibility.chat');
++			await new Promise(resolve => setTimeout(resolve, 2000));
++			const accessibilityItems = await app.code.getElements('.settings-editor .setting-item-bool, .settings-editor .setting-item-text, .settings-editor .setting-item-enum', false);
++			if (accessibilityItems && accessibilityItems.length > 0) {
++				throw new Error(`Expected no accessibility.chat* settings, but found ${accessibilityItems.length} setting items`);
 +			}
 +
 +			// Verify a normal setting still works
