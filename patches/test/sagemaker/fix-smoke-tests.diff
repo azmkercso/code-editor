@@ -170,3 +170,50 @@ Index: code-editor-src/test/smoke/src/areas/multiroot/multiroot.test.ts
  		});
  
  		it('shows results from all folders', async function () {
+Index: code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
+===================================================================
+--- code-editor-src.orig/test/smoke/src/areas/customizations/settings.test.ts
++++ code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
+@@ -37,9 +37,8 @@ export function setup(logger: Logger) {
+ 
+ 		it('chat settings should be excluded from settings UI', async function () {
+ 			const app = this.app as Application;
+-			await app.workbench.settingsEditor.searchSettingsUI('chat.');
++			await app.workbench.settingsEditor.searchSettingsUI('@id:chat.');
+ 			// Wait for search to complete, then verify no setting items are shown
+-			// The count widget shows "No Settings Found" or the editor shows .no-results
+ 			await new Promise(resolve => setTimeout(resolve, 3000));
+ 			const items = await app.code.getElements('.settings-editor .setting-item-bool, .settings-editor .setting-item-text, .settings-editor .setting-item-enum', false);
+ 			if (items && items.length > 0) {
+Index: code-editor-src/test/smoke/src/areas/search/search.test.ts
+===================================================================
+--- code-editor-src.orig/test/smoke/src/areas/search/search.test.ts
++++ code-editor-src/test/smoke/src/areas/search/search.test.ts
+@@ -13,6 +13,13 @@ export function setup(logger: Logger) {
+ 		// Shared before/after handling
+ 		installAllHandlers(logger);
+ 
++		before(async function () {
++			// Wait for the remote extension host to be ready (file system available)
++			const app = this.app as Application;
++			await app.workbench.quickaccess.openFileQuickAccessAndWait('.js', 1);
++			await app.workbench.quickinput.closeQuickInput();
++		});
++
+ 		after(function () {
+ 			const app = this.app as Application;
+ 
+Index: code-editor-src/test/smoke/src/areas/task/task-quick-pick.test.ts
+===================================================================
+--- code-editor-src.orig/test/smoke/src/areas/task/task-quick-pick.test.ts
++++ code-editor-src/test/smoke/src/areas/task/task-quick-pick.test.ts
+@@ -16,6 +16,9 @@ export function setup(options?: { skipSu
+ 			app = this.app as Application;
+ 			task = app.workbench.task;
+ 			terminal = app.workbench.terminal;
++			// Wait for remote extension host to be ready
++			await app.workbench.quickaccess.openFileQuickAccessAndWait('.js', 1);
++			await app.workbench.quickinput.closeQuickInput();
+ 		});
+ 
+ 		afterEach(async () => {
