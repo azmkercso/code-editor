@@ -42,7 +42,15 @@ Index: code-editor-src/remote/package.json
 ===================================================================
 --- code-editor-src.orig/remote/package.json
 +++ code-editor-src/remote/package.json
-@@ -36,7 +36,6 @@
+@@ -3,7 +3,6 @@
+   "version": "0.0.0",
+   "private": true,
+   "dependencies": {
+-    "@github/copilot": "1.0.39",
+     "@github/copilot-sdk": "^0.3.0",
+     "@microsoft/1ds-core-js": "^3.2.13",
+     "@microsoft/1ds-post-js": "^3.2.13",
+@@ -36,7 +35,6 @@
      "https-proxy-agent": "^7.0.2",
      "jschardet": "3.1.4",
      "katex": "^0.16.22",
@@ -50,7 +58,7 @@ Index: code-editor-src/remote/package.json
      "minimist": "^1.2.8",
      "node-pty": "^1.2.0-beta.12",
      "ssh2": "^1.16.0",
-@@ -50,9 +49,6 @@
+@@ -50,9 +48,6 @@
    },
    "overrides": {
      "node-gyp-build": "4.8.1",
