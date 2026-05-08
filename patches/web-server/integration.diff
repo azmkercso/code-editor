@@ -22,7 +22,7 @@ Index: code-editor-src/product.json
 +	},
  	"nameShort": "Code Editor",
  	"nameLong": "Code Editor",
- 	"codeEditorVersion": "1.0.0",
+ 	"applicationName": "code",
 @@ -150,7 +160,10 @@
  		"https://console.amazonaws-us-gov.com",
  		"https://console.amazonaws.cn",

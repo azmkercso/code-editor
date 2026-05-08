@@ -35,7 +35,7 @@ Index: code-editor-src/src/vs/platform/environment/common/environmentService.ts
 ===================================================================
 --- code-editor-src.orig/src/vs/platform/environment/common/environmentService.ts
 +++ code-editor-src/src/vs/platform/environment/common/environmentService.ts
-@@ -98,7 +98,7 @@ export abstract class AbstractNativeEnvi
+@@ -112,7 +112,7 @@ export abstract class AbstractNativeEnvi
  			return URI.file(join(vscodePortable, 'argv.json'));
  		}
  

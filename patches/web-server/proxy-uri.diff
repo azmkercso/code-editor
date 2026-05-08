@@ -9,15 +9,15 @@ Index: code-editor-src/package.json
 ===================================================================
 --- code-editor-src.orig/package.json
 +++ code-editor-src/package.json
-@@ -126,6 +126,7 @@
-     "@xterm/addon-webgl": "^0.20.0-beta.196",
+@@ -121,6 +121,7 @@
      "@xterm/headless": "^6.1.0-beta.197",
      "@xterm/xterm": "^6.1.0-beta.197",
+     "chrome-remote-interface": "^0.33.0",
 +    "http-proxy": "^1.18.1",
      "http-proxy-agent": "^7.0.0",
      "https-proxy-agent": "^7.0.2",
      "jschardet": "3.1.4",
-@@ -155,6 +156,7 @@
+@@ -150,6 +151,7 @@
      "@types/debug": "^4.1.5",
      "@types/eslint": "^9.6.1",
      "@types/gulp-svgmin": "^1.2.1",
@@ -29,7 +29,7 @@ Index: code-editor-src/remote/package.json
 ===================================================================
 --- code-editor-src.orig/remote/package.json
 +++ code-editor-src/remote/package.json
-@@ -31,6 +31,7 @@
+@@ -32,6 +32,7 @@
      "@xterm/headless": "^6.1.0-beta.197",
      "@xterm/xterm": "^6.1.0-beta.197",
      "cookie": "^0.7.0",

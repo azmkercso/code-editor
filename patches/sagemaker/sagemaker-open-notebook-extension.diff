@@ -267,7 +267,7 @@ Index: code-editor-src/build/npm/dirs.ts
 ===================================================================
 --- code-editor-src.orig/build/npm/dirs.ts
 +++ code-editor-src/build/npm/dirs.ts
-@@ -47,6 +47,7 @@ export const dirs = [
+@@ -46,6 +46,7 @@ export const dirs = [
  	'extensions/sagemaker-extension',
  	'extensions/sagemaker-idle-extension',
  	'extensions/sagemaker-terminal-crash-mitigation',

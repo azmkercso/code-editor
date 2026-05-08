@@ -8,7 +8,7 @@ Index: code-editor-src/package.json
 ===================================================================
 --- code-editor-src.orig/package.json
 +++ code-editor-src/package.json
-@@ -249,6 +249,7 @@
+@@ -244,6 +244,7 @@
      "yaserver": "^0.4.0"
    },
    "overrides": {

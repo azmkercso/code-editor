@@ -9,13 +9,13 @@ Index: code-editor-src/src/vs/workbench/contrib/files/browser/fileActions.contri
 --- code-editor-src.orig/src/vs/workbench/contrib/files/browser/fileActions.contribution.ts
 +++ code-editor-src/src/vs/workbench/contrib/files/browser/fileActions.contribution.ts
 @@ -244,12 +244,6 @@ appendToCommandPalette({
- });
+ }, IsSessionsWindowContext.negate());
  
  appendToCommandPalette({
 -	id: REVERT_FILE_COMMAND_ID,
 -	title: nls.localize2('revert', "Revert File"),
 -	category: Categories.File
--});
+-}, IsSessionsWindowContext.negate());
 -
 -appendToCommandPalette({
  	id: COMPARE_WITH_SAVED_COMMAND_ID,

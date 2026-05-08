@@ -43,13 +43,12 @@ Index: code-editor-src/src/vs/workbench/contrib/debug/browser/debug-stub.contrib
 +	ctorDescriptor: new SyncDescriptor(DebugViewPaneContainer),
 +	storageId: VIEWLET_ID,
 +	hideIfEmpty: true,
-+}, ViewContainerLocation.Sidebar, { doNotRegisterOpenCommand: true });
 Index: code-editor-src/src/vs/workbench/workbench.common.main.ts
 ===================================================================
 --- code-editor-src.orig/src/vs/workbench/workbench.common.main.ts
 +++ code-editor-src/src/vs/workbench/workbench.common.main.ts
-@@ -271,7 +271,7 @@ import './contrib/comments/browser/comme
- import './contrib/comments/browser/commentsEditorContribution.js';
+@@ -270,7 +270,7 @@ import './contrib/scm/browser/quickDiff.
+ import './contrib/scm/browser/scm.service.contribution.js';
  
  // Debug
 -import './contrib/debug/browser/debug.contribution.js';
