@@ -1,0 +1,53 @@
+Remove kerberos dependency
+
+Removes kerberos as a dependency from package.json and remote/package.json.
+Kerberos cannot compile on the Brazil fleet and is not needed for Code Editor.
+Also removes the associated node-addon-api override pinned for kerberos.
+
+@generated
+@generator: scripts/patches/apply-package-config.sh
+
+Index: code-editor-src/package.json
+===================================================================
+--- code-editor-src.orig/package.json
++++ code-editor-src/package.json
+@@ -130,7 +130,6 @@
+     "https-proxy-agent": "^7.0.2",
+     "jschardet": "3.1.4",
+     "katex": "^0.16.22",
+-    "kerberos": "2.1.1",
+     "minimist": "^1.2.8",
+     "native-is-elevated": "0.9.0",
+     "native-keymap": "^3.3.5",
+@@ -251,9 +250,6 @@
+   },
+   "overrides": {
+     "node-gyp-build": "4.8.1",
+-    "kerberos@2.1.1": {
+-      "node-addon-api": "7.1.0"
+-    },
+     "serialize-javascript": "^7.0.3",
+     "ssh2": {
+       "cpu-features": "0.0.0"
+Index: code-editor-src/remote/package.json
+===================================================================
+--- code-editor-src.orig/remote/package.json
++++ code-editor-src/remote/package.json
+@@ -35,7 +35,6 @@
+     "https-proxy-agent": "^7.0.2",
+     "jschardet": "3.1.4",
+     "katex": "^0.16.22",
+-    "kerberos": "2.1.1",
+     "minimist": "^1.2.8",
+     "node-pty": "^1.2.0-beta.12",
+     "ssh2": "^1.16.0",
+@@ -49,9 +48,6 @@
+   },
+   "overrides": {
+     "node-gyp-build": "4.8.1",
+-    "kerberos@2.1.1": {
+-      "node-addon-api": "7.1.0"
+-    },
+     "ssh2": {
+       "cpu-features": "0.0.0"
+     }

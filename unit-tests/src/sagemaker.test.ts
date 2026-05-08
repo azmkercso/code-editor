@@ -4,6 +4,18 @@ import * as assert from 'assert';
 import { readPatched, assertContains, describeIfSageMaker, PATCHED_VSCODE_DIR } from './test-helpers';
 
 describeIfSageMaker('sagemaker patches', () => {
+  describe('sagemaker-product-config.diff (generated)', () => {
+    it('should rename to SageMaker Code Editor', () => {
+      const productJson = JSON.parse(readPatched('product.json'));
+      assert.strictEqual(productJson.nameShort, 'SageMaker Code Editor');
+      assert.strictEqual(productJson.nameLong, 'SageMaker Code Editor');
+    });
+
+    it('should have sagemakerCodeEditorVersion', () => {
+      assertContains(readPatched('product.json'), '"sagemakerCodeEditorVersion"');
+    });
+  });
+
   describe('sagemaker-integration.diff', () => {
     it('web.main.ts should import SagemakerServerClient', () => {
       assertContains(readPatched('src/vs/workbench/browser/web.main.ts'), 'SagemakerServerClient');

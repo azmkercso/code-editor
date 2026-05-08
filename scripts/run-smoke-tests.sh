@@ -62,13 +62,11 @@ fi
 if [ "$SKIP_PATCHES" = false ]; then
   echo "=== Applying test patches ==="
   cd "$SRC_DIR"
-  # Remove any existing test quilt state
-  if [ -d .pc ]; then
-    QUILT_PATCHES=../patches/test QUILT_SERIES=../patches/test/sagemaker-testing.series quilt pop -af 2>/dev/null || true
-    rm -rf .pc
-  fi
+  # Pop any existing test patches
+  source "$SCRIPT_DIR/quilt-env.sh" test-patches code-editor-sagemaker-server
+  quilt pop -af 2>/dev/null || true
+  rm -rf .pc-test
   # Restore files modified by test patches to upstream state
-  # (they may have been baked into code-editor-src from a previous run)
   THIRD_PARTY="$ROOT_DIR/third-party-src"
   if [ -d "$THIRD_PARTY/test" ]; then
     while IFS= read -r f; do
@@ -82,8 +80,7 @@ if [ "$SKIP_PATCHES" = false ]; then
       fi
     done < <(grep -h "^Index:" "$ROOT_DIR"/patches/test/*.diff "$ROOT_DIR"/patches/test/sagemaker/*.diff 2>/dev/null | sed 's|^Index: code-editor-src/||')
   fi
-  export QUILT_PATCHES=../patches/test
-  export QUILT_SERIES=../patches/test/sagemaker-testing.series
+  # Apply test patches
   quilt push -a
 fi
 

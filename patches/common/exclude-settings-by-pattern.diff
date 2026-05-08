@@ -5,49 +5,6 @@ adds excludedSettingPatterns to the IProductConfiguration interface in product.t
 and modifies configurationRegistry.ts to route pattern-matched settings to
 excludedConfigurationProperties (hidden from the Settings UI).
 
-Index: code-editor-src/product.json
-===================================================================
---- code-editor-src.orig/product.json
-+++ code-editor-src/product.json
-@@ -150,5 +150,38 @@
- 		"https://console.amazonaws.cn",
- 		"https://aws.amazon.com",
- 		"https://*.amazon.com"
-+	],
-+	"excludedSettingPatterns": [
-+		"chat.",
-+		"inlineChat.",
-+		"notebook.experimental.chat",
-+		"accessibility.signals.chat",
-+		"accessibility.chat",
-+		"accessibility.openChat",
-+		"accessibility.verboseChat",
-+		"accessibility.verbosity.chat",
-+		"accessibility.verbosity.terminalChat",
-+		"accessibility.verbosity.inlineChat",
-+		"accessibility.verbosity.panelChat",
-+		"accessibility.verbosity.sessionsChat",
-+		"workbench.chat.",
-+		"workbench.commandPalette.showAskInChat",
-+		"github.copilot",
-+		"terminal.integrated.chat.",
-+		"ai.",
-+		"git.addAICoAuthor",
-+		"workbench.commandPalette.experimental.chat",
-+		"workbench.commandPalette.experimental.askChat",
-+		"imageCarousel.chat"
-+	],
-+	"excludedActionPatterns": [
-+		"workbench.action.chat.",
-+		"workbench.action.quickchat.",
-+		"inlineChat.",
-+		"notebook.cell.chat.",
-+		"interactive.input.chat.",
-+		"workbench.action.terminal.chat.",
-+		"github.copilot.",
-+		"workbench.action.edits."
- 	]
- }
 Index: code-editor-src/src/vs/base/common/product.ts
 ===================================================================
 --- code-editor-src.orig/src/vs/base/common/product.ts

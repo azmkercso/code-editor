@@ -93,21 +93,6 @@ Index: code-editor-src/src/vs/workbench/browser/web.main.ts
  		// Window
  		this._register(instantiationService.createInstance(BrowserWindow));
  
-Index: code-editor-src/product.json
-===================================================================
---- code-editor-src.orig/product.json
-+++ code-editor-src/product.json
-@@ -9,8 +9,8 @@
- 		"nlsBaseUrl": "",
- 		"publisherUrl": ""
- 	},
--	"nameShort": "Code Editor",
--	"nameLong": "Code Editor",
-+	"nameShort": "SageMaker Code Editor",
-+	"nameLong": "SageMaker Code Editor",
- 	"codeEditorVersion": "1.0.0",
- 	"applicationName": "code",
- 	"dataFolderName": ".vscode-editor",
 Index: code-editor-src/src/vs/platform/product/common/product.ts
 ===================================================================
 --- code-editor-src.orig/src/vs/platform/product/common/product.ts

@@ -79,10 +79,10 @@ Index: code-editor-src/test/smoke/src/main.ts
  import { setup as setupServerBehaviorTests } from './areas/customizations/server-behavior.test';
  import { setup as setupEmbeddingTests } from './areas/customizations/embedding.test';
 +import { setup as setupSageMakerExtensionsTests } from './areas/sagemaker-extensions/sagemaker-extensions.test';
+ import { setup as setupExtensionLoadingTests } from './areas/customizations/extension-loading.test';
  
  const rootPath = path.join(__dirname, '..', '..', '..');
- 
-@@ -288,6 +289,7 @@ describe(`VSCode Smoke Tests (${opts.web
+@@ -289,6 +290,7 @@ describe(`VSCode Smoke Tests (${opts.web
  	setupTerminalTests(logger);
  	setupTaskTests(logger);
  	setupStatusbarTests(logger);

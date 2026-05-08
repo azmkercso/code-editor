@@ -3,6 +3,7 @@ common/disable-online-services.diff
 common/disable-telemetry-service.diff
 common/remove-accounts-feature.diff
 common/remove-cloud-changes-feature.diff
+common/product-config.diff
 common/trusted-domains.diff
 common/allow-unused-vars.diff
 common/heartbeat.diff
@@ -17,7 +18,8 @@ common/remove-disable-prompting-for-non-trusted-urls-option.diff
 common/suppress-known-errors-script.diff
 common/service-worker-fix.diff
 common/proposed-api.diff
-common/build.diff
+common/remove-kerberos.diff
+common/build-tool-adjustments.diff
 common/integration.diff
 common/override-electron.diff
 common/override-postcss.diff
@@ -37,6 +39,7 @@ web-server/display-language.diff
 web-server/signature-verification.diff
 sagemaker/sagemaker-extension.diff
 sagemaker/update-csp.diff
+sagemaker/sagemaker-product-config.diff
 sagemaker/sagemaker-integration.diff
 sagemaker/base-path-compatibility.diff
 sagemaker/sagemaker-idle-extension.diff

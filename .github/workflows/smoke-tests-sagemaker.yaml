@@ -345,9 +345,8 @@ jobs:
           # Apply E2E testing patches
 
           cd code-editor-src
-          rm -rf .pc
-          export QUILT_PATCHES=../patches/test 
-          export QUILT_SERIES=../patches/test/sagemaker-testing.series
+          rm -rf .pc-test
+          source ../scripts/quilt-env.sh test-patches code-editor-sagemaker-server
           quilt push -a -f
   
           # Run smoke tests with DataZone authentication

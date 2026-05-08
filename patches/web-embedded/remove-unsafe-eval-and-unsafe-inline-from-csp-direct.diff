@@ -5,6 +5,9 @@ removes 'unsafe-inline' from the web client style-src and notebook
 webview script-src, and tightens the extension host iframe CSP to
 improve security posture for the web-embedded build.
 
+SHA placeholders (__INLINE_SCRIPT_SHA__) are replaced by update_inline_sha
+in prepare-src.sh after all patches are applied.
+
 Index: code-editor-src/src/vs/server/node/webClientServer.ts
 ===================================================================
 --- code-editor-src.orig/src/vs/server/node/webClientServer.ts
@@ -51,7 +54,7 @@ Index: code-editor-src/src/vs/workbench/contrib/webview/browser/pre/index.html
  
  	<meta http-equiv="Content-Security-Policy"
 -		content="default-src 'none'; script-src 'sha256-q+WTr+fBXpLLE3++yWNaxT6BTWQtsKscoeIlynBRk4E=' 'self'; frame-src 'self'; style-src 'unsafe-inline';">
-+		content="default-src 'none'; script-src 'sha256-TaWGDzV7c9rUH2q/5ygOyYUHSyHIqBMYfucPh3lnKvU=' 'self'; frame-src 'self';">
++		content="default-src 'none'; script-src '__INLINE_SCRIPT_SHA__' 'self'; frame-src 'self';">
  
  	<!-- Disable pinch zooming -->
  	<meta name="viewport"
@@ -64,7 +67,7 @@ Index: code-editor-src/src/vs/workbench/services/extensions/worker/webWorkerExte
  			default-src 'none';
  			child-src 'self' data: blob:;
 -			script-src 'self' 'wasm-unsafe-eval' 'sha256-cl8ijlOzEe+0GRCQNJQu2k6nUQ0fAYNYIuuKEm72JDs=' https: http://localhost:* blob:;
-+			script-src 'self' 'sha256-cl8ijlOzEe+0GRCQNJQu2k6nUQ0fAYNYIuuKEm72JDs=' https: http://localhost:* blob:;
++			script-src 'self' '__INLINE_SCRIPT_SHA__' https: http://localhost:* blob:;
  			connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*;"/>
  	</head>
  	<body>

@@ -399,19 +399,26 @@ scan_github_advisories() {
     local repo_owner="microsoft"
     local repo_name="vscode"
     local vscode_version=$(jq -r '.version' third-party-src/package.json)
-    local backported_file="patches/backported-patches.json"
     
     echo "Found VS Code version: $vscode_version"
     
-    # Load backported patches list if exists
+    # Load backported finding IDs from patch headers (@backported + @finding-id metadata)
     local -A backported_patches
-    if [ -f "$backported_file" ]; then
-        echo "Loading backported patches from $backported_file"
-        local finding_ids=$(jq -r '.[].finding_id' "$backported_file")
-        while IFS= read -r finding_id; do
-            [ -n "$finding_id" ] && backported_patches["$finding_id"]=1
-        done <<< "$finding_ids"
-        echo "Loaded ${#backported_patches[@]} backported patches to ignore"
+    for patch_file in patches/**/*.diff; do
+        [[ -f "$patch_file" ]] || continue
+        # Only read the header (before first Index: or --- diff marker)
+        local header
+        header=$(sed '/^Index:\|^---.*\//q' "$patch_file")
+        if echo "$header" | grep -q "^@backported"; then
+            local finding_id
+            finding_id=$(echo "$header" | grep "^@finding-id:" | sed 's/^@finding-id:[[:space:]]*//')
+            if [[ -n "$finding_id" ]]; then
+                backported_patches["$finding_id"]=1
+            fi
+        fi
+    done
+    if [[ ${#backported_patches[@]} -gt 0 ]]; then
+        echo "Found ${#backported_patches[@]} backported patches from patch headers"
     fi
     
     echo "Fetching security advisories from GitHub API for $repo_owner/$repo_name"

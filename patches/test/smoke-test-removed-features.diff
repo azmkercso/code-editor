@@ -7,7 +7,7 @@ Index: code-editor-src/test/smoke/src/areas/customizations/removed-features.test
 ===================================================================
 --- /dev/null
 +++ code-editor-src/test/smoke/src/areas/customizations/removed-features.test.ts
-@@ -0,0 +1,139 @@
+@@ -0,0 +1,147 @@
 +/*---------------------------------------------------------------------------------------------
 + *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
 + *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -143,6 +143,14 @@ Index: code-editor-src/test/smoke/src/areas/customizations/removed-features.test
 +			const hasExport = exportCommands.some(c => c.includes('Export Profile'));
 +			if (hasImport || hasExport) {
 +				throw new Error('Profile import/export commands should not be available');
++			}
++		});
++
++		it('should have debug service registered', async function () {
++			const app = this.app as Application;
++			const commands = await app.workbench.quickaccess.getVisibleCommandNames('Debug: ');
++			if (!commands.some(c => c.includes('Debug'))) {
++				throw new Error('Debug commands not available — IDebugService may not be registered');
 +			}
 +		});
 +	});

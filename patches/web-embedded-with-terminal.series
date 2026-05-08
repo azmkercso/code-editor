@@ -3,6 +3,7 @@ common/disable-online-services.diff
 common/disable-telemetry-service.diff
 common/remove-accounts-feature.diff
 common/remove-cloud-changes-feature.diff
+common/product-config.diff
 common/trusted-domains.diff
 common/allow-unused-vars.diff
 common/heartbeat.diff
@@ -17,7 +18,8 @@ common/remove-disable-prompting-for-non-trusted-urls-option.diff
 common/suppress-known-errors-script.diff
 common/service-worker-fix.diff
 common/proposed-api.diff
-common/build.diff
+common/remove-kerberos.diff
+common/build-tool-adjustments.diff
 common/integration.diff
 common/override-electron.diff
 common/override-postcss.diff
@@ -36,7 +38,7 @@ web-embedded/clean-up-workbench-and-use-tb-cdn-for-webview-in-pro.diff
 web-embedded/add-a-much-simpler-workbench.diff
 web-embedded/remove-ssh-remote-host-in-code-oss.diff
 web-embedded/remove-source-control.diff
-web-embedded/only-have-debug-view-container.diff
+web-embedded/debug-stub.diff
 web-embedded/disable-user-tasks-and-fix-build-warnings.diff
 web-embedded/disable-merge-conflict.diff
 web-embedded/disable-call-hierarchy.diff

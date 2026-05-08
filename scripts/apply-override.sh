@@ -199,9 +199,10 @@ quilt refresh -p ab --no-timestamps
 
 popd > /dev/null
 
-# Write metadata header
+# Write metadata header (strip any existing header to avoid duplicates)
 METADATA=$(build_metadata)
-PATCH_CONTENT=$(cat "$PATCH_FILE")
+# Strip existing header: everything before the first "Index:" or "---" diff marker
+PATCH_CONTENT=$(sed -n '/^Index:\|^--- /,$p' "$PATCH_FILE")
 printf '%s\n\n%s\n' "$METADATA" "$PATCH_CONTENT" > "$PATCH_FILE"
 
 # Push remaining patches
