@@ -3,7 +3,6 @@ Disable GitHub Copilot features and AI telemetry
 Removes the built-in Copilot extension from the build pipeline entirely:
 - Removes compileCopilotExtensionBuildTask and ripgrep shim from gulpfile.reh.ts
 - Removes extensions/copilot from build/npm/dirs.ts (no npm install)
-- Removes @github/copilot and @github/copilot-sdk dependencies
 - Removes copilot-related npm scripts (watch-copilot, copilot:setup, etc.)
 
 Also: inlines IExperimentationFilterProvider to remove tas-client dependency,
@@ -296,11 +295,3 @@ Index: code-editor-src/package.json
      "update-build-ts-version": "npm install -D typescript@next && npm install -D @typescript/native-preview && (cd build && npm run typecheck)",
      "install-local-component-explorer": "npm install ../vscode-packages/js-component-explorer/dist/vscode-component-explorer-0.1.0.tgz ../vscode-packages/js-component-explorer/dist/vscode-component-explorer-cli-0.1.0.tgz --no-save && cd build/rspack && npm install ../../../vscode-packages/js-component-explorer/dist/vscode-component-explorer-webpack-plugin-0.1.0.tgz --no-save && cd ../vite && npm install ../../../vscode-packages/js-component-explorer/dist/vscode-component-explorer-vite-plugin-0.1.0.tgz --no-save",
      "symlink-local-component-explorer": "npm install ../vscode-packages/js-component-explorer/packages/explorer ../vscode-packages/js-component-explorer/packages/cli --no-save && cd build/rspack && npm install ../../../vscode-packages/js-component-explorer/packages/webpack-plugin ../../../vscode-packages/js-component-explorer/packages/explorer --no-save && cd ../vite && npm install ../../../vscode-packages/js-component-explorer/packages/vite-plugin ../../../vscode-packages/js-component-explorer/packages/explorer --no-save",
-@@ -88,7 +83,6 @@
-   },
-   "dependencies": {
-     "@anthropic-ai/sdk": "^0.82.0",
--    "@github/copilot": "1.0.39",
-     "@github/copilot-sdk": "^0.3.0",
-     "@microsoft/1ds-core-js": "^3.2.13",
-     "@microsoft/1ds-post-js": "^3.2.13",

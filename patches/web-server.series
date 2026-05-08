@@ -19,7 +19,7 @@ common/suppress-known-errors-script.diff
 common/replace-inline-sha-with-placeholder.diff
 common/service-worker-fix.diff
 common/proposed-api.diff
-common/remove-kerberos.diff
+common/remove-unused-dependencies.diff
 common/build-tool-adjustments.diff
 common/integration.diff
 common/override-electron.diff
