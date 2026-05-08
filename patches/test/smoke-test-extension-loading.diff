@@ -1,0 +1,49 @@
+Extension loading smoke test for Code Editor
+
+Verifies that the extension host is functional by testing the built-in
+TypeScript language features extension. Creates a JS file with a type
+error and confirms diagnostics appear, proving extension activation and
+language server protocol work correctly in the reh-web build.
+Index: code-editor-src/test/smoke/src/areas/customizations/extension-loading.test.ts
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/customizations/extension-loading.test.ts
+@@ -0,0 +1,38 @@
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++
++import * as path from 'path';
++import * as fs from 'fs';
++import { Application, Logger } from '../../../../automation';
++import { installAllHandlers } from '../../utils';
++
++export function setup(logger: Logger) {
++	describe('Code Editor - Extension Loading', () => {
++
++		installAllHandlers(logger);
++
++		it('TypeScript language features activate for JS files', async function () {
++			this.timeout(60_000);
++			const app = this.app as Application;
++
++			// Create a JS file with a type error to trigger diagnostics
++			const jsFile = path.join(app.workspacePathOrFolder, 'test-ts-extension.js');
++			fs.writeFileSync(jsFile, '// @ts-check\n/** @type {number} */\nconst x = "not a number";\n');
++
++			// Open the file
++			await app.workbench.quickaccess.openFile(jsFile);
++			await app.workbench.editors.waitForActiveEditor('test-ts-extension.js');
++
++			// Wait for TypeScript to activate and produce diagnostics (squiggly line)
++			// The .squiggly-error or .squiggly-warning class appears when TS reports issues
++			await app.code.waitForElement('.view-overlays .squiggly-error, .view-overlays .squiggly-warning', undefined, 60);
++
++			logger.log('TypeScript diagnostics rendered — TypeScript language features extension is functional');
++
++			// Clean up
++			fs.unlinkSync(jsFile);
++		});
++	});
++}

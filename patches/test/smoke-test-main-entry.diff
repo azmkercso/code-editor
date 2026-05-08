@@ -2,12 +2,13 @@ Register Code Editor customization smoke tests in main.ts
 
 Imports and registers all customization test suites in the upstream
 smoke test entry point. Server behavior and embedding tests are gated
-behind --web flag since they require a running web server.
+behind --web flag since they require a running web server. Extension
+loading tests run in all modes.
 Index: code-editor-src/test/smoke/src/main.ts
 ===================================================================
 --- code-editor-src.orig/test/smoke/src/main.ts
 +++ code-editor-src/test/smoke/src/main.ts
-@@ -29,6 +29,11 @@ import { setup as setupTerminalTests } f
+@@ -29,6 +29,12 @@ import { setup as setupTerminalTests } f
  import { setup as setupTaskTests } from './areas/task/task.test';
  import { setup as setupChatTests } from './areas/chat/chatDisabled.test';
  import { setup as setupAccessibilityTests } from './areas/accessibility/accessibility.test';
@@ -16,10 +17,11 @@ Index: code-editor-src/test/smoke/src/main.ts
 +import { setup as setupCustomSettingsTests } from './areas/customizations/settings.test';
 +import { setup as setupServerBehaviorTests } from './areas/customizations/server-behavior.test';
 +import { setup as setupEmbeddingTests } from './areas/customizations/embedding.test';
++import { setup as setupExtensionLoadingTests } from './areas/customizations/extension-loading.test';
  
  const rootPath = path.join(__dirname, '..', '..', '..');
  
-@@ -419,4 +424,11 @@ describe(`VSCode Smoke Tests (${opts.web
+@@ -419,4 +425,12 @@ describe(`VSCode Smoke Tests (${opts.web
  	if (!opts.web && !opts.remote) { setupLaunchTests(logger); }
  	if (!opts.web) { setupChatTests(logger); }
  	setupAccessibilityTests(logger, opts, quality);
@@ -30,4 +32,5 @@ Index: code-editor-src/test/smoke/src/main.ts
 +	setupCustomSettingsTests(logger);
 +	if (opts.web) { setupServerBehaviorTests(logger); }
 +	if (opts.web) { setupEmbeddingTests(logger); }
++	setupExtensionLoadingTests(logger);
  });

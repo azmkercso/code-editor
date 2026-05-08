@@ -3,7 +3,9 @@ smoke-test-branding.diff
 smoke-test-settings.diff
 smoke-test-server-behavior.diff
 smoke-test-embedding.diff
+smoke-test-extension-loading.diff
 smoke-test-main-entry.diff
+enable-terminal-task-tests.diff
 sagemaker/sagemaker-smoke-testing-entry.diff
 sagemaker/fix-smoke-tests.diff
 sagemaker/sagemaker-extensions.diff

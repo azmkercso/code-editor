@@ -1,0 +1,53 @@
+Enable terminal and task smoke tests for reh-web builds
+
+Upstream skips terminal and task tests on Linux due to pty host crashes
+in Electron CI (issues #216564, #225250). In our reh-web build the pty
+host runs as part of the server process and is stable. Gate the skip on
+VSCODE_REMOTE_SERVER_PATH being unset so tests run in our environment.
+
+Index: code-editor-src/test/smoke/src/areas/terminal/terminal.test.ts
+===================================================================
+--- code-editor-src.orig/test/smoke/src/areas/terminal/terminal.test.ts
++++ code-editor-src/test/smoke/src/areas/terminal/terminal.test.ts
+@@ -37,17 +37,18 @@
+ 		});
+ 
+ 		// https://github.com/microsoft/vscode/issues/216564
+-		// The pty host can crash on Linux in smoke tests for an unknown reason. We need more user
+-		// reports to investigate
+-		setupTerminalEditorsTests({ skipSuite: process.platform === 'linux' });
+-		setupTerminalInputTests({ skipSuite: process.platform === 'linux' });
+-		setupTerminalPersistenceTests({ skipSuite: process.platform === 'linux' });
+-		setupTerminalProfileTests({ skipSuite: process.platform === 'linux' });
+-		setupTerminalTabsTests({ skipSuite: process.platform === 'linux' });
+-		setupTerminalShellIntegrationTests({ skipSuite: process.platform === 'linux' });
++		// The pty host can crash on Linux in Electron smoke tests. In reh-web builds
++		// (VSCODE_REMOTE_SERVER_PATH set), the pty host is stable — enable tests.
++		const skipOnLinux = process.platform === 'linux' && !process.env.VSCODE_REMOTE_SERVER_PATH;
++		setupTerminalEditorsTests({ skipSuite: skipOnLinux });
++		setupTerminalInputTests({ skipSuite: skipOnLinux });
++		setupTerminalPersistenceTests({ skipSuite: skipOnLinux });
++		setupTerminalProfileTests({ skipSuite: skipOnLinux });
++		setupTerminalTabsTests({ skipSuite: skipOnLinux });
++		setupTerminalShellIntegrationTests({ skipSuite: skipOnLinux });
+ 		setupTerminalStickyScrollTests({ skipSuite: true });
+ 		// https://github.com/microsoft/vscode/pull/141974
+ 		// Windows is skipped here as well as it was never enabled from the start
+-		setupTerminalSplitCwdTests({ skipSuite: process.platform === 'linux' || process.platform === 'win32' });
++		setupTerminalSplitCwdTests({ skipSuite: skipOnLinux || process.platform === 'win32' });
+ 	});
+ }
+Index: code-editor-src/test/smoke/src/areas/task/task.test.ts
+===================================================================
+--- code-editor-src.orig/test/smoke/src/areas/task/task.test.ts
++++ code-editor-src/test/smoke/src/areas/task/task.test.ts
+@@ -18,7 +18,7 @@
+ 
+ 		// Refs https://github.com/microsoft/vscode/issues/225250
+ 		// Pty spawning fails with invalid fd error in product CI while development CI
+-		// works fine, we need additional logging to investigate.
+-		setupTaskQuickPickTests({ skipSuite: process.platform === 'linux' });
++		// works fine. In reh-web builds the pty host is stable — enable tests.
++		setupTaskQuickPickTests({ skipSuite: process.platform === 'linux' && !process.env.VSCODE_REMOTE_SERVER_PATH });
+ 	});
+ }
