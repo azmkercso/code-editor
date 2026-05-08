@@ -66,6 +66,14 @@ calc_script_SHAs() {
             sed -i "s|'__INLINE_SCRIPT_SHA__'|$new_sha|g" "$filepath"
         fi
         echo "Updated SHA in $filepath"
+    elif grep -q "'sha256-" "$filepath"; then
+        # Replace existing SHA-256 hash in CSP meta tag
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|'sha256-[A-Za-z0-9+/=]*'|$new_sha|g" "$filepath"
+        else
+            sed -i "s|'sha256-[A-Za-z0-9+/=]*'|$new_sha|g" "$filepath"
+        fi
+        echo "Updated existing SHA in $filepath"
     fi
     
     echo "$new_sha"

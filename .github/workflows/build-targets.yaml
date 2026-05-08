@@ -87,23 +87,9 @@ jobs:
           restore-keys: |
             native-modules-${{ runner.os }}-
       
-      - name: Install code editor dependencies
+      - name: Install and build artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd code-editor-src
-          for i in 1 2 3; do
-            echo "npm ci attempt $i"
-            if npm ci; then exit 0; fi
-            echo "Attempt $i failed, waiting before retry..."
-            rm -rf node_modules
-            sleep $((i * 30))
-          done
-          echo "::error::npm ci failed after 3 attempts"
-          exit 1
-      
-      - name: Build artifacts
-        env:
           BUILD_TARGET: ${{ matrix.build-target }}
         run: |
           ./scripts/build-artifacts.sh "$BUILD_TARGET"

@@ -8,7 +8,7 @@ Index: code-editor-src/test/smoke/src/areas/customizations/extension-loading.tes
 ===================================================================
 --- /dev/null
 +++ code-editor-src/test/smoke/src/areas/customizations/extension-loading.test.ts
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,70 @@
 +/*---------------------------------------------------------------------------------------------
 + *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
 + *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -23,6 +23,38 @@ Index: code-editor-src/test/smoke/src/areas/customizations/extension-loading.tes
 +	describe('Code Editor - Extension Loading', () => {
 +
 +		installAllHandlers(logger);
++
++		it('markdown preview extension activates and renders content', async function () {
++			this.timeout(60_000);
++			const app = this.app as Application;
++
++			// Create a markdown file with known content
++			const mdFile = path.join(app.workspacePathOrFolder, 'test-preview.md');
++			fs.writeFileSync(mdFile, '# Hello Markdown\n\nThis is a **test** paragraph.\n');
++
++			// Open the file
++			await app.workbench.quickaccess.openFile(mdFile);
++			await app.workbench.editors.waitForActiveEditor('test-preview.md');
++
++			// Open markdown preview to the side
++			await app.workbench.quickaccess.runCommand('markdown.showPreviewToSide');
++
++			// Wait for the webview iframe to appear in the DOM
++			const page = app.code.driver.currentPage;
++			await page.locator('iframe.webview.ready').first().waitFor({ state: 'attached', timeout: 15000 });
++
++			// Access the nested iframe structure: outer webview → inner active-frame
++			const webviewFrame = page.frameLocator('iframe.webview.ready').first();
++			const innerFrame = webviewFrame.frameLocator('#active-frame');
++
++			// Verify the rendered content contains our heading
++			await innerFrame.locator('h1', { hasText: 'Hello Markdown' }).waitFor({ state: 'visible', timeout: 30000 });
++
++			logger.log('Markdown preview rendered correctly in webview iframe');
++
++			// Clean up
++			fs.unlinkSync(mdFile);
++		});
 +
 +		it('TypeScript language features activate for JS files', async function () {
 +			this.timeout(60_000);

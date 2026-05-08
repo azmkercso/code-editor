@@ -53,7 +53,7 @@ fi
 
 if [ ! -d "$SRC_DIR/node_modules" ]; then
   echo "ERROR: node_modules not found in code-editor-src/"
-  echo "Run: cd code-editor-src && npm ci"
+  echo "Run: ./scripts/build-artifacts.sh --dev <target>"
   exit 1
 fi
 
@@ -135,6 +135,7 @@ if [ -n "$GREP_PATTERN" ]; then
 fi
 
 VSCODE_REMOTE_SERVER_PATH="$BUILD_DIR" \
+  CODE_EDITOR_TARGET=code-editor-sagemaker-server \
   node test/index.js --web --headless $EXTRA_ARGS
 
 echo "=== Smoke tests complete ==="

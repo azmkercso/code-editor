@@ -12,8 +12,8 @@ Index: code-editor-src/src/vs/workbench/contrib/webview/browser/pre/index.html
  	<meta charset="UTF-8">
  
  	<meta http-equiv="Content-Security-Policy"
--		content="default-src 'none'; script-src 'sha256-TaWGDzV7c9rUH2q/5ygOyYUHSyHIqBMYfucPh3lnKvU=' 'self'; frame-src 'self';">
-+		content="default-src 'none'; script-src 'sha256-TaWGDzV7c9rUH2q/5ygOyYUHSyHIqBMYfucPh3lnKvU=' 'self'; frame-src 'self'; style-src 'unsafe-inline'; connect-src 'self';">
+-		content="default-src 'none'; script-src '__INLINE_SCRIPT_SHA__' 'self'; frame-src 'self';">
++		content="default-src 'none'; script-src '__INLINE_SCRIPT_SHA__' 'self'; frame-src 'self'; style-src 'unsafe-inline'; connect-src 'self';">
  
  	<!-- Disable pinch zooming -->
  	<meta name="viewport"

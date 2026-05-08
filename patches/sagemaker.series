@@ -16,6 +16,7 @@ common/remove-vsda.diff
 common/embedded-api.diff
 common/remove-disable-prompting-for-non-trusted-urls-option.diff
 common/suppress-known-errors-script.diff
+common/replace-inline-sha-with-placeholder.diff
 common/service-worker-fix.diff
 common/proposed-api.diff
 common/remove-kerberos.diff

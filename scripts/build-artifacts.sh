@@ -121,6 +121,24 @@ build() {
 }
 
 DEV_BUILD=false
+SKIP_INSTALL=false
+
+install_dependencies() {
+    local build_src_dir="$(pwd)/code-editor-src"
+    cd "$build_src_dir"
+    for i in 1 2 3; do
+        echo "npm ci attempt $i"
+        if npm ci; then
+            cd ..
+            return 0
+        fi
+        echo "Attempt $i failed, waiting before retry..."
+        rm -rf node_modules
+        sleep $((i * 30))
+    done
+    echo "ERROR: npm ci failed after 3 attempts"
+    exit 1
+}
 
 main() {
     local target="code-editor-sagemaker-server"
@@ -128,10 +146,15 @@ main() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dev) DEV_BUILD=true; shift ;;
+            --skip-install) SKIP_INSTALL=true; shift ;;
             *) target="$1"; shift ;;
         esac
     done
     
+    if [[ "$SKIP_INSTALL" != "true" ]]; then
+        install_dependencies
+    fi
+
     local build_target_base=$("$(dirname "$0")/determine-build-target.sh" "$target")
     echo "Building for target: $build_target_base"
     build "$build_target_base"
