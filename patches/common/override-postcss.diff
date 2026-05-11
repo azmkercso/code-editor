@@ -1,7 +1,7 @@
 Override postcss to ^8.4.31.
 
 @generated
-@generator: scripts/apply-override.sh --patch common/override-postcss.diff --override 'global:postcss=^8.4.31'
+@generator: scripts/patches/apply-override.sh --patch common/override-postcss.diff --override 'global:postcss=^8.4.31'
 @override-package: postcss@^8.4.31
 
 Index: code-editor-src/package.json

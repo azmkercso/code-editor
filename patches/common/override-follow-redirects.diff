@@ -1,7 +1,7 @@
 Override follow-redirects to ^1.16.0.
 
 @generated
-@generator: scripts/apply-override.sh --patch common/override-follow-redirects.diff --override 'global:follow-redirects=^1.16.0'
+@generator: scripts/patches/apply-override.sh --patch common/override-follow-redirects.diff --override 'global:follow-redirects=^1.16.0'
 @override-package: follow-redirects@^1.16.0
 
 Index: code-editor-src/package.json

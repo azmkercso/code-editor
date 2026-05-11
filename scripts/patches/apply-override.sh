@@ -4,7 +4,7 @@
 # npm package versions in package.json files.
 #
 # Usage:
-#   scripts/apply-override.sh \
+#   scripts/patches/apply-override.sh \
 #     --patch common/override-example.diff \
 #     --header 'Override example-pkg to ^2.0.0' \
 #     --override 'global:example-pkg=^2.0.0' \
@@ -138,7 +138,7 @@ build_metadata() {
     echo "$HEADER"
     echo ""
     echo "@generated"
-    echo "@generator: scripts/apply-override.sh ${cli_args}"
+    echo "@generator: scripts/patches/apply-override.sh ${cli_args}"
 
     # Collect unique @override-package entries
     local -A seen_pkg=()
