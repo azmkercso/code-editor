@@ -29,7 +29,7 @@ Index: code-editor-src/remote/package.json
 ===================================================================
 --- code-editor-src.orig/remote/package.json
 +++ code-editor-src/remote/package.json
-@@ -32,6 +32,7 @@
+@@ -31,6 +31,7 @@
      "@xterm/headless": "^6.1.0-beta.197",
      "@xterm/xterm": "^6.1.0-beta.197",
      "cookie": "^0.7.0",
