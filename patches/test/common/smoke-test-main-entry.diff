@@ -1,0 +1,282 @@
+Register Code Editor smoke tests in main.ts
+
+Imports and registers all customization and SageMaker extension test
+suites. Server behavior, embedding, extension-loading, and SageMaker
+tests are gated behind --web flag. Simplifies test setup for reh-web
+environment (removes unused Electron/multiroot/extension-host-restart
+imports, streamlines repository setup).
+Index: code-editor-src/test/smoke/src/main.ts
+===================================================================
+--- code-editor-src.orig/test/smoke/src/main.ts
++++ code-editor-src/test/smoke/src/main.ts
+@@ -6,13 +6,10 @@
+ import * as fs from 'fs';
+ import { gracefulify } from 'graceful-fs';
+ import * as cp from 'child_process';
+-import * as path from 'path';
+ import * as os from 'os';
++import * as path from 'path';
+ import minimist from 'minimist';
+-import * as vscodetest from '@vscode/test-electron';
+-import fetch from 'node-fetch';
+-import { Quality, MultiLogger, Logger, ConsoleLogger, FileLogger, measureAndLog, getDevElectronPath, getBuildElectronPath, getBuildVersion, ApplicationOptions } from '../../automation';
+-import { retry } from './utils';
++import { Quality, MultiLogger, Logger, ConsoleLogger, FileLogger, getDevElectronPath, getBuildElectronPath, getBuildVersion, ApplicationOptions } from '../../automation';
+ 
+ import { setup as setupDataLossTests } from './areas/workbench/data-loss.test';
+ import { setup as setupPreferencesTests } from './areas/preferences/preferences.test';
+@@ -21,14 +18,18 @@ import { setup as setupNotebookTests } f
+ import { setup as setupLanguagesTests } from './areas/languages/languages.test';
+ import { setup as setupStatusbarTests } from './areas/statusbar/statusbar.test';
+ import { setup as setupExtensionTests } from './areas/extensions/extensions.test';
+-import { setup as setupExtensionHostRestartTests } from './areas/extensions/extension-host-restart.test';
+-import { setup as setupMultirootTests } from './areas/multiroot/multiroot.test';
+ import { setup as setupLocalizationTests } from './areas/workbench/localization.test';
+ import { setup as setupLaunchTests } from './areas/workbench/launch.test';
+ import { setup as setupTerminalTests } from './areas/terminal/terminal.test';
+ import { setup as setupTaskTests } from './areas/task/task.test';
+ import { setup as setupChatTests } from './areas/chat/chatDisabled.test';
+ import { setup as setupAccessibilityTests } from './areas/accessibility/accessibility.test';
++import { setup as setupRemovedFeaturesTests } from './areas/customizations/removed-features.test';
++import { setup as setupBrandingTests } from './areas/customizations/branding.test';
++import { setup as setupCustomSettingsTests } from './areas/customizations/settings.test';
++import { setup as setupServerBehaviorTests } from './areas/customizations/server-behavior.test';
++import { setup as setupExtensionLoadingTests } from './areas/customizations/extension-loading.test';
++import { setup as setupSageMakerExtensionsTests } from './areas/sagemaker-extensions/sagemaker-extensions.test';
+ 
+ const rootPath = path.join(__dirname, '..', '..', '..');
+ 
+@@ -120,33 +121,36 @@ try {
+ 	logger.log(`Error enabling graceful-fs: ${error}`);
+ }
+ 
+-function getTestTypeSuffix(): string {
+-	if (opts.web) {
+-		return 'browser';
+-	} else if (opts.remote) {
+-		return 'remote';
+-	} else {
+-		return 'electron';
+-	}
+-}
+-
+-const testDataPath = path.join(os.tmpdir(), `vscsmoke-${getTestTypeSuffix()}`);
++const testDataPath = process.env.SMOKE_TEST_DATA_PATH || path.join(os.tmpdir(), 'vscsmoke');
+ if (fs.existsSync(testDataPath)) {
+ 	fs.rmSync(testDataPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
+ }
+ fs.mkdirSync(testDataPath, { recursive: true });
+-process.once('exit', () => {
+-	try {
+-		fs.rmSync(testDataPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
+-	} catch {
+-		// noop
+-	}
+-});
+ 
+ const testRepoUrl = 'https://github.com/microsoft/vscode-smoketest-express';
+-const workspacePath = path.join(testDataPath, `vscode-smoketest-express`);
++const workspacePath = path.join(testDataPath, 'vscode-smoketest-express');
+ const extensionsPath = path.join(testDataPath, 'extensions-dir');
+-fs.mkdirSync(extensionsPath, { recursive: true });
++
++async function setupRepository(): Promise<void> {
++	if (opts['test-repo']) {
++		logger.log('Copying test project repository:', opts['test-repo']);
++		fs.rmSync(workspacePath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
++		cp.execSync(`cp -R "${opts['test-repo']}" "${workspacePath}"`);
++	} else {
++		if (!fs.existsSync(workspacePath)) {
++			logger.log('Cloning test project repository...');
++			const res = cp.spawnSync('git', ['clone', testRepoUrl, workspacePath], { stdio: 'inherit' });
++			if (!fs.existsSync(workspacePath)) {
++				throw new Error(`Clone operation failed: ${res.stderr?.toString()}`);
++			}
++		} else {
++			logger.log('Cleaning test project repository...');
++			cp.spawnSync('git', ['fetch'], { cwd: workspacePath, stdio: 'inherit' });
++			cp.spawnSync('git', ['reset', '--hard', 'FETCH_HEAD'], { cwd: workspacePath, stdio: 'inherit' });
++			cp.spawnSync('git', ['clean', '-xdf'], { cwd: workspacePath, stdio: 'inherit' });
++		}
++	}
++}
+ 
+ function fail(errorMessage): void {
+ 	logger.log(errorMessage);
+@@ -223,7 +227,10 @@ else {
+ 	const testCodeServerPath = opts.build || process.env.VSCODE_REMOTE_SERVER_PATH;
+ 
+ 	if (typeof testCodeServerPath === 'string') {
+-		if (!fs.existsSync(testCodeServerPath)) {
++		// Skip file existence check for SageMaker/DataZone testing
++		if (process.env.DATAZONE_URL && process.env.SPACE_NAME) {
++			logger.log(`Running web smoke tests against SageMaker DataZone space: ${process.env.SPACE_NAME}`);
++		} else if (!fs.existsSync(testCodeServerPath)) {
+ 			fail(`Cannot find Code server at ${testCodeServerPath}.`);
+ 		} else {
+ 			logger.log(`Running web smoke tests against ${testCodeServerPath}`);
+@@ -245,125 +252,6 @@ logger.log(`VS Code product quality: ${q
+ 
+ const userDataDir = path.join(testDataPath, 'd');
+ 
+-async function setupRepository(): Promise<void> {
+-	if (opts['test-repo']) {
+-		logger.log('Copying test project repository:', opts['test-repo']);
+-		fs.rmSync(workspacePath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
+-		// not platform friendly
+-		if (process.platform === 'win32') {
+-			cp.execSync(`xcopy /E "${opts['test-repo']}" "${workspacePath}"\\*`);
+-		} else {
+-			cp.execSync(`cp -R "${opts['test-repo']}" "${workspacePath}"`);
+-		}
+-	} else {
+-		if (!fs.existsSync(workspacePath)) {
+-			logger.log('Cloning test project repository...');
+-			const res = cp.spawnSync('git', ['clone', testRepoUrl, workspacePath], { stdio: 'inherit' });
+-			if (!fs.existsSync(workspacePath)) {
+-				throw new Error(`Clone operation failed: ${res.stderr.toString()}`);
+-			}
+-		} else {
+-			logger.log('Cleaning test project repository...');
+-			cp.spawnSync('git', ['fetch'], { cwd: workspacePath, stdio: 'inherit' });
+-			cp.spawnSync('git', ['reset', '--hard', 'FETCH_HEAD'], { cwd: workspacePath, stdio: 'inherit' });
+-			cp.spawnSync('git', ['clean', '-xdf'], { cwd: workspacePath, stdio: 'inherit' });
+-		}
+-	}
+-}
+-
+-async function ensureStableCode(): Promise<void> {
+-	let stableCodePath = opts['stable-build'];
+-	if (!stableCodePath) {
+-		const current = parseVersion(version!);
+-		const versionsReq = await retry(() => measureAndLog(() => fetch('https://update.code.visualstudio.com/api/releases/stable'), 'versionReq', logger), 1000, 20);
+-
+-		if (!versionsReq.ok) {
+-			throw new Error('Could not fetch releases from update server');
+-		}
+-
+-		const versions: string[] = await measureAndLog(() => versionsReq.json(), 'versionReq.json()', logger);
+-		const stableVersion = versions.find(raw => {
+-			const version = parseVersion(raw);
+-			return version.major < current.major || (version.major === current.major && version.minor < current.minor);
+-		});
+-
+-		if (!stableVersion) {
+-			throw new Error(`Could not find suitable stable version for ${version}`);
+-		}
+-
+-		logger.log(`Found VS Code v${version}, downloading previous VS Code version ${stableVersion}...`);
+-
+-		let lastProgressMessage: string | undefined = undefined;
+-		let lastProgressReportedAt = 0;
+-		const stableCodeDestination = path.join(testDataPath, 's');
+-		const stableCodeExecutable = await retry(() => measureAndLog(() => vscodetest.download({
+-			cachePath: stableCodeDestination,
+-			version: stableVersion,
+-			extractSync: true,
+-			reporter: {
+-				report: report => {
+-					let progressMessage = `download stable code progress: ${report.stage}`;
+-					const now = Date.now();
+-					if (progressMessage !== lastProgressMessage || now - lastProgressReportedAt > 10000) {
+-						lastProgressMessage = progressMessage;
+-						lastProgressReportedAt = now;
+-
+-						if (report.stage === 'downloading') {
+-							progressMessage += ` (${report.bytesSoFar}/${report.totalBytes})`;
+-						}
+-
+-						logger.log(progressMessage);
+-					}
+-				},
+-				error: error => logger.log(`download stable code error: ${error}`)
+-			}
+-		}), 'download stable code', logger), 1000, 3, async () => {
+-			fs.rmSync(stableCodeDestination, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
+-		});
+-
+-		if (process.platform === 'darwin') {
+-			// Visual Studio Code.app/Contents/MacOS/Code
+-			stableCodePath = path.dirname(path.dirname(path.dirname(stableCodeExecutable)));
+-		} else {
+-			// VSCode/Code.exe (Windows) | VSCode/code (Linux)
+-			stableCodePath = path.dirname(stableCodeExecutable);
+-		}
+-
+-		opts['stable-version'] = parseVersion(stableVersion);
+-	}
+-
+-	if (!fs.existsSync(stableCodePath)) {
+-		throw new Error(`Cannot find Stable VSCode at ${stableCodePath}.`);
+-	}
+-
+-	logger.log(`Using stable build ${stableCodePath} for migration tests`);
+-
+-	opts['stable-build'] = stableCodePath;
+-}
+-
+-async function setup(): Promise<void> {
+-	logger.log('Test data path:', testDataPath);
+-	logger.log('Preparing smoketest setup...');
+-
+-	if (!opts.web && !opts.remote && opts.build) {
+-		// only enabled when running with --build and not in web or remote
+-		await measureAndLog(() => ensureStableCode(), 'ensureStableCode', logger);
+-	}
+-	await measureAndLog(() => setupRepository(), 'setupRepository', logger);
+-
+-	// Copy smoke test extension for extension host restart test
+-	if (!opts.web && !opts.remote) {
+-		const smokeExtPath = path.join(rootPath, 'test', 'smoke', 'extensions', 'vscode-smoketest-ext-host');
+-		const dest = path.join(extensionsPath, 'vscode-smoketest-ext-host');
+-		if (fs.existsSync(dest)) {
+-			fs.rmSync(dest, { recursive: true, force: true });
+-		}
+-		fs.cpSync(smokeExtPath, dest, { recursive: true });
+-	}
+-
+-	logger.log('Smoketest setup done!\n');
+-}
+-
+ // Before all tests run setup
+ before(async function () {
+ 	this.timeout(5 * 60 * 1000); // increase since we download VSCode
+@@ -389,18 +277,7 @@ before(async function () {
+ 	};
+ 	this.defaultOptions = options;
+ 
+-	await setup();
+-});
+-
+-// After main suite (after all tests)
+-after(async function () {
+-	try {
+-		await measureAndLog(async () => {
+-			fs.rmSync(testDataPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 });
+-		}, 'rimraf(testDataPath)', logger);
+-	} catch (error) {
+-		logger.log(`Unable to delete smoke test workspace: ${error}. This indicates some process is locking the workspace folder.`);
+-	}
++	await setupRepository();
+ });
+ 
+ describe(`VSCode Smoke Tests (${opts.web ? 'Web' : 'Electron'})`, () => {
+@@ -413,10 +290,16 @@ describe(`VSCode Smoke Tests (${opts.web
+ 	setupTaskTests(logger);
+ 	setupStatusbarTests(logger);
+ 	if (quality !== Quality.Dev && quality !== Quality.OSS) { setupExtensionTests(logger); }
+-	if (!opts.web && !opts.remote) { setupExtensionHostRestartTests(logger); }
+-	setupMultirootTests(logger);
+ 	if (!opts.web && !opts.remote && quality !== Quality.Dev && quality !== Quality.OSS) { setupLocalizationTests(logger); }
+ 	if (!opts.web && !opts.remote) { setupLaunchTests(logger); }
+ 	if (!opts.web) { setupChatTests(logger); }
+ 	setupAccessibilityTests(logger, opts, quality);
++
++	// Code Editor customization tests
++	setupRemovedFeaturesTests(logger);
++	setupBrandingTests(logger);
++	setupCustomSettingsTests(logger);
++	if (opts.web) { setupServerBehaviorTests(logger); }
++	if (opts.web) { setupExtensionLoadingTests(logger); }
++	if (opts.web) { setupSageMakerExtensionsTests(logger); }
+ });

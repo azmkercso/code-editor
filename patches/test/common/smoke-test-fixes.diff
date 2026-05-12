@@ -1,9 +1,7 @@
-Fix smoke tests for SageMaker environment
+Fix smoke test infrastructure for reh-web environment
 
-Removes the absolute path requirement for file opening in QuickAccess and
-fixes terminal label parsing to handle description text correctly in the
-SageMaker test environment.
-
+Adjusts test automation helpers for remote extension host timing,
+terminal profile detection, and multiroot workspace handling.
 Index: code-editor-src/test/automation/src/quickaccess.ts
 ===================================================================
 --- code-editor-src.orig/test/automation/src/quickaccess.ts
@@ -31,19 +29,6 @@ Index: code-editor-src/test/automation/src/quickaccess.ts
  
  		const fileName = basename(path);
  
-Index: code-editor-src/test/automation/src/terminal.ts
-===================================================================
---- code-editor-src.orig/test/automation/src/terminal.ts
-+++ code-editor-src/test/automation/src/terminal.ts
-@@ -219,7 +219,7 @@ export class Terminal {
- 			const description: IElement | undefined = await this.code.waitForElement(`${Selector.Tabs}[data-index="${i}"] ${Selector.TabsEntry} ${Selector.Description}`, () => true);
- 
- 			const label: TerminalLabel = {
--				name: title.textContent.replace(/^[├┌└]\s*/, ''),
-+				name: title.textContent.replace(/^[├┌└]\s*/, '').replace(description?.textContent || '', '').trim(),
- 				description: description?.textContent
- 			};
- 			// It's a new group if the tab does not start with ├ or └
 Index: code-editor-src/test/automation/src/settings.ts
 ===================================================================
 --- code-editor-src.orig/test/automation/src/settings.ts
@@ -72,21 +57,19 @@ Index: code-editor-src/test/automation/src/settings.ts
  		await this.editors.saveOpenedFile();
  		await this.quickaccess.runCommand('workbench.action.closeActiveEditor');
  	}
-Index: code-editor-src/test/smoke/src/areas/terminal/terminal-profiles.test.ts
+Index: code-editor-src/test/automation/src/terminal.ts
 ===================================================================
---- code-editor-src.orig/test/smoke/src/areas/terminal/terminal-profiles.test.ts
-+++ code-editor-src/test/smoke/src/areas/terminal/terminal-profiles.test.ts
-@@ -6,8 +6,8 @@
- import { Application, Terminal, TerminalCommandId, TerminalCommandIdWithValue, SettingsEditor } from '../../../../automation';
- import { setTerminalTestSettings } from './terminal-helpers';
+--- code-editor-src.orig/test/automation/src/terminal.ts
++++ code-editor-src/test/automation/src/terminal.ts
+@@ -219,7 +219,7 @@ export class Terminal {
+ 			const description: IElement | undefined = await this.code.waitForElement(`${Selector.Tabs}[data-index="${i}"] ${Selector.TabsEntry} ${Selector.Description}`, () => true);
  
--const CONTRIBUTED_PROFILE_NAME = `JavaScript Debug Terminal`;
--const ANY_PROFILE_NAME = '^((?!JavaScript Debug Terminal).)*$';
-+const CONTRIBUTED_PROFILE_NAME = `sh`;
-+const ANY_PROFILE_NAME = '^(?!^sh$).*$';
- 
- export function setup(options?: { skipSuite: boolean }) {
- 	(options?.skipSuite ? describe.skip : describe)('Terminal Profiles', () => {
+ 			const label: TerminalLabel = {
+-				name: title.textContent.replace(/^[├┌└]\s*/, ''),
++				name: title.textContent.replace(/^[├┌└]\s*/, '').replace(description?.textContent || '', '').trim(),
+ 				description: description?.textContent
+ 			};
+ 			// It's a new group if the tab does not start with ├ or └
 Index: code-editor-src/test/smoke/src/areas/multiroot/multiroot.test.ts
 ===================================================================
 --- code-editor-src.orig/test/smoke/src/areas/multiroot/multiroot.test.ts
@@ -145,7 +128,7 @@ Index: code-editor-src/test/smoke/src/areas/multiroot/multiroot.test.ts
 +	await app.workbench.quickinput.waitForQuickInputOpened();
 +	await app.workbench.quickinput.type(`${workspacePath}/smoketest.code-workspace`);
 +	await new Promise(resolve => setTimeout(resolve, 500));
-+	await app.code.sendKeybinding('enter');
++	await app.code.dispatchKeybinding('enter', () => Promise.resolve());
 +	await new Promise(resolve => setTimeout(resolve, 5000));
 +	await app.code.waitForElement('.monaco-workbench')
  }
@@ -170,3 +153,18 @@ Index: code-editor-src/test/smoke/src/areas/multiroot/multiroot.test.ts
  		});
  
  		it('shows results from all folders', async function () {
+Index: code-editor-src/test/smoke/src/areas/terminal/terminal-profiles.test.ts
+===================================================================
+--- code-editor-src.orig/test/smoke/src/areas/terminal/terminal-profiles.test.ts
++++ code-editor-src/test/smoke/src/areas/terminal/terminal-profiles.test.ts
+@@ -6,8 +6,8 @@
+ import { Application, Terminal, TerminalCommandId, TerminalCommandIdWithValue, SettingsEditor } from '../../../../automation';
+ import { setTerminalTestSettings } from './terminal-helpers';
+ 
+-const CONTRIBUTED_PROFILE_NAME = `JavaScript Debug Terminal`;
+-const ANY_PROFILE_NAME = '^((?!JavaScript Debug Terminal).)*$';
++const CONTRIBUTED_PROFILE_NAME = `sh`;
++const ANY_PROFILE_NAME = '^(?!^sh$).*$';
+ 
+ export function setup(options?: { skipSuite: boolean }) {
+ 	(options?.skipSuite ? describe.skip : describe)('Terminal Profiles', () => {

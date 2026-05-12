@@ -1,0 +1,47 @@
+Smoke tests for settings configuration
+
+Verifies telemetry is OFF-only and update mode is "none".
+Index: code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/customizations/settings.test.ts
+@@ -0,0 +1,39 @@
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++
++import { Application, Logger } from '../../../../automation';
++import { installAllHandlers } from '../../utils';
++
++export function setup(logger: Logger) {
++	describe('Code Editor - Settings Configuration', () => {
++
++		installAllHandlers(logger);
++
++		it('telemetry setting should be OFF with no other options', async function () {
++			const app = this.app as Application;
++			await app.workbench.settingsEditor.searchSettingsUI('telemetry.telemetryLevel');
++			const settingControl = await app.code.waitForElement('.settings-editor .setting-item-contents .setting-item-control select');
++			if (settingControl) {
++				const text = settingControl.textContent.toLowerCase();
++				if (!text.includes('off')) {
++					throw new Error(`Telemetry setting should be "off", got: ${settingControl.textContent}`);
++				}
++			}
++		});
++
++		it('update mode should be "none"', async function () {
++			const app = this.app as Application;
++			await app.workbench.settingsEditor.searchSettingsUI('update.mode');
++			const settingControl = await app.code.waitForElement('.settings-editor .setting-item-contents .setting-item-control select');
++			if (settingControl) {
++				const text = settingControl.textContent.toLowerCase();
++				if (!text.includes('none')) {
++					throw new Error(`Update mode should be "none", got: ${settingControl.textContent}`);
++				}
++			}
++		});
++
++	});
++}

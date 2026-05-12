@@ -1,14 +1,58 @@
-Add SageMaker extension installation smoke tests
+SageMaker extension smoke tests
 
-Introduces e2e tests that verify extensions can be installed via the
-terminal CLI command and appear correctly in the activity bar within
-the SageMaker environment.
-
+Tests for SageMaker-specific extensions (install, idle, dark theme).
+Guarded by isSagemaker check — skipped on non-sagemaker targets.
+Dark theme test asserts conditionally based on SERVICE_NAME env var.
+Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-dark-theme.test.ts
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-dark-theme.test.ts
+@@ -0,0 +1,40 @@
++/*---------------------------------------------------------------------------------------------
++*  Copyright Amazon.com Inc. or its affiliates. All rights reserved.
++*  Licensed under the MIT License. See License.txt in the project root for license information.
++*--------------------------------------------------------------------------------------------*/
++
++import { Application } from '../../../../automation';
++
++export function setup() {
++	describe('Dark Theme', () => {
++		it('should have correct theme on startup', async function () {
++			const app = this.app as Application;
++
++			// Open color theme picker without auto-selecting
++			await new Promise<void>(resolve => setTimeout(resolve, 3000));
++			await app.workbench.quickaccess.runCommand('workbench.action.selectTheme', { keepOpen: true });
++
++			// Wait for quick input to open
++			await app.workbench.quickinput.waitForQuickInputOpened();
++			await new Promise<void>(resolve => setTimeout(resolve, 1000));
++			// Get the focused theme (currently selected)
++			const focusedTheme = await app.code.waitForElement('.quick-input-widget .quick-input-list .monaco-list-row.focused .monaco-highlighted-label');
++			const selectedTheme = focusedTheme.textContent;
++
++			// Close quick input
++			await app.workbench.quickinput.closeQuickInput();
++
++			if (process.env.SERVICE_NAME === 'SageMakerUnifiedStudio') {
++				// With SERVICE_NAME set, the extension should activate and set a dark theme
++				if (!selectedTheme.toLowerCase().includes('dark')) {
++					throw new Error(`Expected dark theme when SERVICE_NAME=SageMakerUnifiedStudio, got: ${selectedTheme}`);
++				}
++			} else {
++				// Without SERVICE_NAME, the extension should NOT change the theme (stays default)
++				if (selectedTheme.toLowerCase().includes('sagemaker')) {
++					throw new Error(`Expected default theme without SERVICE_NAME, got SageMaker theme: ${selectedTheme}`);
++				}
++			}
++		});
++	});
++}
 Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-extensions-install.test.ts
 ===================================================================
 --- /dev/null
 +++ code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-extensions-install.test.ts
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,33 @@
 +/*---------------------------------------------------------------------------------------------
 +*  Copyright Amazon.com Inc. or its affiliates. All rights reserved.
 +*  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -21,6 +65,7 @@ Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-exten
 +		let app: Application;
 +
 +		before(async function () {
++			this.timeout(60000);
 +			app = this.app as Application;
 +			await app.workbench.terminal.createTerminal();
 +		});
@@ -30,22 +75,22 @@ Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-exten
 +		});
 +
 +		it('extensions can be installed via terminal', async function () {
-+			
-+			// Install Amazon EMR extension via terminal command
-+			const emrInstallCommand = 'sagemaker-code-editor --install-extension AmazonEMR.emr-tools --extensions-dir /home/sagemaker-user/sagemaker-code-editor-server-data/extensions';
-+			await app.workbench.terminal.runCommandInTerminal(emrInstallCommand);
++			// Use the build's remote CLI to install an extension
++			const buildPath = process.env.VSCODE_REMOTE_SERVER_PATH;
++			const cli = buildPath ? `${buildPath}/bin/remote-cli/code` : 'code';
++			const installCommand = `${cli} --install-extension AmazonEMR.emr-tools`;
++			await app.workbench.terminal.runCommandInTerminal(installCommand);
 +			
 +			// Wait for extension to be installed and verify it appears in activity bar
 +			await app.code.waitForElement('.activitybar ul[role="tablist"] li a[aria-label="Amazon EMR"]', undefined, 150);
 +		});
 +	});
 +}
-\ No newline at end of file
 Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-extensions.test.ts
 ===================================================================
 --- /dev/null
 +++ code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-extensions.test.ts
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,28 @@
 +/*---------------------------------------------------------------------------------------------
 +*  Copyright Amazon.com Inc. or its affiliates. All rights reserved.
 +*  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -57,8 +102,14 @@ Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-exten
 +import { setup as setupSageMakerIdleExtensionTests } from './sagemaker-idle-extension.test';
 +import { setup as setupSageMakerDarkThemeTests } from './sagemaker-dark-theme.test';
 +
++const target = process.env.CODE_EDITOR_TARGET || '';
++const isSagemaker = target.includes('sagemaker');
++
 +export function setup(logger: Logger) {
 +	describe('SageMaker Extensions', function () {
++		before(function () {
++			if (!isSagemaker) { this.skip(); return; }
++		});
 +
 +		// Shared before/after handling
 +		installAllHandlers(logger);
@@ -68,31 +119,11 @@ Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-exten
 +		setupSageMakerDarkThemeTests();
 +	});
 +}
-Index: code-editor-src/test/smoke/src/main.ts
-===================================================================
---- code-editor-src.orig/test/smoke/src/main.ts
-+++ code-editor-src/test/smoke/src/main.ts
-@@ -22,6 +22,7 @@ import { setup as setupTerminalTests } f
- import { setup as setupTaskTests } from './areas/task/task.test';
- import { setup as setupChatTests } from './areas/chat/chatDisabled.test';
- import { setup as setupAccessibilityTests } from './areas/accessibility/accessibility.test';
-+import { setup as setupSageMakerExtensionsTests } from './areas/sagemaker-extensions/sagemaker-extensions.test';
- 
- const rootPath = path.join(__dirname, '..', '..', '..');
- 
-@@ -253,6 +254,7 @@ describe(`VSCode Smoke Tests (${opts.web
- 	setupTerminalTests(logger);
- 	setupTaskTests(logger);
- 	setupStatusbarTests(logger);
-+	if (opts.web) { setupSageMakerExtensionsTests(logger); }
- 	if (quality !== Quality.Dev && quality !== Quality.OSS) { setupExtensionTests(logger); }
- 	if (!opts.web && !opts.remote && quality !== Quality.Dev && quality !== Quality.OSS) { setupLocalizationTests(logger); }
- 	if (!opts.web && !opts.remote) { setupLaunchTests(logger); }
 Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-idle-extension.test.ts
 ===================================================================
 --- /dev/null
 +++ code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-idle-extension.test.ts
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,57 @@
 +/*---------------------------------------------------------------------------------------------
 +*  Copyright Amazon.com Inc. or its affiliates. All rights reserved.
 +*  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -105,6 +136,7 @@ Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-idle-
 +		let app: Application;
 +
 +		before(async function () {
++			this.timeout(60000);
 +			app = this.app as Application;
 +			await app.workbench.terminal.createTerminal();
 +		});
@@ -117,64 +149,34 @@ Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-idle-
 +
 +			// Get initial timestamp
 +			await app.workbench.terminal.runCommandInTerminal('cat /tmp/.sagemaker-last-active-timestamp');
-+			await new Promise<void>(resolve => setTimeout(resolve, 500));
++			await new Promise<void>(resolve => setTimeout(resolve, 1000));
 +			const initialBuffer = await app.code.driver.getTerminalBuffer('.terminal-wrapper');
 +			const initialTimestamp = initialBuffer.join('\n').match(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/)?.[0];
-+			
-+			// Perform terminal operation
-+			await app.workbench.terminal.runCommandInTerminal('ls');
 +
-+			// Wait 60 seconds
-+			await new Promise<void>(resolve => setTimeout(resolve, 60000));
++			// Wait so the next timestamp is different
++			await new Promise<void>(resolve => setTimeout(resolve, 2000));
 +
-+			// Check timestamp was updated
-+			await app.workbench.terminal.runCommandInTerminal('cat /tmp/.sagemaker-last-active-timestamp');
++			// Trigger VS Code events that the idle extension listens to:
++			// Opening a new untitled file triggers onDidChangeActiveTextEditor
++			await app.workbench.quickaccess.runCommand('workbench.action.files.newUntitledFile');
++			await new Promise<void>(resolve => setTimeout(resolve, 1000));
++
++			// Focus back to terminal to read the timestamp
++			await app.workbench.quickaccess.runCommand('workbench.action.terminal.focus');
 +			await new Promise<void>(resolve => setTimeout(resolve, 500));
++
++			// Read updated timestamp
++			await app.workbench.terminal.runCommandInTerminal('cat /tmp/.sagemaker-last-active-timestamp');
++			await new Promise<void>(resolve => setTimeout(resolve, 1000));
 +			const updatedBuffer = await app.code.driver.getTerminalBuffer('.terminal-wrapper');
 +			const allTimestamps = updatedBuffer.join('\n').match(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g);
 +			const updatedTimestamp = allTimestamps?.[allTimestamps.length - 1];
 +			
-+			
-+			if (initialTimestamp === updatedTimestamp) {
-+				throw new Error('Last active timestamp was not updated');
++			if (!initialTimestamp || !updatedTimestamp) {
++				throw new Error(`Could not read timestamps: initial=${initialTimestamp}, updated=${updatedTimestamp}`);
 +			}
-+		});
-+	});
-+}
-Index: code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-dark-theme.test.ts
-===================================================================
---- /dev/null
-+++ code-editor-src/test/smoke/src/areas/sagemaker-extensions/sagemaker-dark-theme.test.ts
-@@ -0,0 +1,33 @@
-+/*---------------------------------------------------------------------------------------------
-+*  Copyright Amazon.com Inc. or its affiliates. All rights reserved.
-+*  Licensed under the MIT License. See License.txt in the project root for license information.
-+*--------------------------------------------------------------------------------------------*/
-+
-+import { Application } from '../../../../automation';
-+
-+export function setup() {
-+	describe('Dark Theme', () => {
-+		it('should automatically set dark theme on startup', async function () {
-+			const app = this.app as Application;
-+
-+			// Open color theme picker without auto-selecting
-+			await new Promise<void>(resolve => setTimeout(resolve, 3000));
-+			await app.workbench.quickaccess.runCommand('workbench.action.selectTheme', { keepOpen: true });
-+			
-+			// Wait for quick input to open
-+			await app.workbench.quickinput.waitForQuickInputOpened();
-+			await new Promise<void>(resolve => setTimeout(resolve, 1000));
-+			// Get the focused theme (currently selected)
-+			const focusedTheme = await app.code.waitForElement('.quick-input-widget .quick-input-list .monaco-list-row.focused .monaco-highlighted-label');
-+			const selectedTheme = focusedTheme.textContent;
-+			
-+			// Close quick input
-+			await app.workbench.quickinput.closeQuickInput();
-+			console.log(`Selected theme: ${selectedTheme}`);
-+			// Verify it's a dark theme
-+			if (!selectedTheme.toLowerCase().includes('dark')) {
-+				throw new Error(`Expected dark theme but got: ${selectedTheme}`);
++			if (initialTimestamp === updatedTimestamp) {
++				throw new Error(`Last active timestamp was not updated: ${initialTimestamp}`);
 +			}
 +		});
 +	});

@@ -1,0 +1,112 @@
+Smoke tests for server behavior
+
+Verifies healthz endpoint, CSP headers, service worker, marketplace,
+base-path support, and referer validation (sagemaker-only).
+Index: code-editor-src/test/smoke/src/areas/customizations/server-behavior.test.ts
+===================================================================
+--- /dev/null
++++ code-editor-src/test/smoke/src/areas/customizations/server-behavior.test.ts
+@@ -0,0 +1,103 @@
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++
++import fetch from 'node-fetch';
++import { Application, Logger } from '../../../../automation';
++import { installAllHandlers } from '../../utils';
++
++export function setup(logger: Logger) {
++	describe('Code Editor - Server Behavior', () => {
++
++		installAllHandlers(logger);
++
++		it('GET /healthz should return 200 with hasActiveConnections', async function () {
++			const app = this.app as Application;
++			const page = app.code.driver.currentPage;
++			const pageUrl = new URL(page.url());
++			const baseUrl = `${pageUrl.protocol}//${pageUrl.host}`;
++
++			const response = await fetch(`${baseUrl}/healthz`);
++			if (response.status !== 200) {
++				throw new Error(`Expected /healthz to return 200, got ${response.status}`);
++			}
++			const body = await response.json() as Record<string, unknown>;
++			if (!('hasActiveConnections' in body)) {
++				throw new Error(`Expected hasActiveConnections in response, got: ${JSON.stringify(body)}`);
++			}
++		});
++
++		it('service worker registration should not use type module', async function () {
++			const app = this.app as Application;
++			const pageSource = await app.code.driver.currentPage.content();
++			if (/navigator\.serviceWorker\.register\([^)]*type:\s*['"]module['"]/.test(pageSource)) {
++				throw new Error('Service worker registration should not use type: "module"');
++			}
++		});
++
++		it('CSP headers should not contain unsafe-eval or unsafe-inline in script-src', async function () {
++			const app = this.app as Application;
++			const page = app.code.driver.currentPage;
++			const response = await page.request.get(page.url());
++			const csp = response.headers()['content-security-policy'] || '';
++			// Extract script-src directive only
++			const scriptSrc = csp.match(/script-src\s+([^;]+)/)?.[1] || '';
++			if (!scriptSrc) {
++				throw new Error('No script-src directive found in CSP');
++			}
++			// Match 'unsafe-eval' but not 'wasm-unsafe-eval'
++			if (/(?<![a-z-])unsafe-eval/.test(scriptSrc)) {
++				throw new Error(`script-src should not contain unsafe-eval: ${scriptSrc}`);
++			}
++			if (scriptSrc.includes('unsafe-inline')) {
++				throw new Error(`script-src should not contain unsafe-inline: ${scriptSrc}`);
++			}
++		});
++
++		it('should validate HTTP request referer (sagemaker target)', async function () {
++			if (!process.env.CODE_EDITOR_TARGET?.includes('sagemaker')) {
++				this.skip();
++				return;
++			}
++			const app = this.app as Application;
++			const page = app.code.driver.currentPage;
++			const pageUrl = new URL(page.url());
++			const baseUrl = `${pageUrl.protocol}//${pageUrl.host}`;
++
++			const response = await fetch(`${baseUrl}/vscode-remote-resource`, {
++				headers: { 'Referer': 'https://evil.example.com/' }
++			});
++			if (response.status !== 403) {
++				throw new Error(`Expected 403 for mismatched Referer, got ${response.status}`);
++			}
++		});
++
++		it('should load editor under a sub-path (base-path)', async function () {
++			const app = this.app as Application;
++			const page = app.code.driver.currentPage;
++			const pageUrl = new URL(page.url());
++			// If the editor is served under a base path, the URL pathname should reflect it
++			// This test verifies the page loaded successfully (workbench is present)
++			await app.code.waitForElement('.monaco-workbench');
++			logger.log(`Editor loaded at path: ${pageUrl.pathname}`);
++		});
++
++		it('should use Open VSX marketplace, not MS marketplace', async function () {
++			const app = this.app as Application;
++			const page = app.code.driver.currentPage;
++			const pageUrl = new URL(page.url());
++			const baseUrl = `${pageUrl.protocol}//${pageUrl.host}`;
++
++			// Fetch product.json from the server to check marketplace config
++			const response = await fetch(`${baseUrl}/product.json`);
++			if (response.ok) {
++				const product = await response.json() as Record<string, any>;
++				const serviceUrl = product.extensionsGallery?.serviceUrl || '';
++				if (serviceUrl.includes('marketplace.visualstudio.com')) {
++					throw new Error(`Marketplace should not point to MS marketplace: ${serviceUrl}`);
++				}
++			}
++		});
++	});
++}
