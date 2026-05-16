@@ -3,3 +3,12 @@
 /patches/sagemaker.series @aws/aws-code-editor @aws/sagemaker-code-editor
 /patches/sagemaker/ @aws/aws-code-editor @aws/sagemaker-code-editor
 /sagemaker-tests/ @aws/aws-code-editor @aws/sagemaker-code-editor
+
+# Security override co-ownership — both teams can approve override patches,
+# lockfile overrides, and attribution updates. CI guardrail (validate-overrides.yaml)
+# ensures completeness.
+/patches/**/override-*.diff @aws/aws-code-editor @aws/sagemaker-code-editor
+/package-lock-overrides/ @aws/aws-code-editor @aws/sagemaker-code-editor
+/overrides/LICENSE-THIRD-PARTY @aws/aws-code-editor @aws/sagemaker-code-editor
+/LICENSE-THIRD-PARTY @aws/aws-code-editor @aws/sagemaker-code-editor
+/configuration/sagemaker-version.json @aws/aws-code-editor @aws/sagemaker-code-editor

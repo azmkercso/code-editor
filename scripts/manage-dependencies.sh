@@ -75,6 +75,37 @@ check_unapproved_licenses() {
     check_excluded_package_licenses "$target" "$src_dir"
 }
 
+install_dependencies() {
+    local src_dir="$1"
+    local start_time=$SECONDS
+    if [[ "$UPDATE_LOCKFILES" == "true" ]]; then
+        npm install
+    else
+        npm ci
+    fi
+    echo ">>> npm install took $((SECONDS - start_time))s in $(pwd)"
+}
+
+copy_lockfile_overrides() {
+    local target="$1"
+    local src_dir="$2"
+    [[ "$UPDATE_LOCKFILES" != "true" ]] && return
+    local override_path
+    override_path=$(jq -r '."package-lock-overrides".path' "$ROOT_DIR/configuration/$target.json")
+    rm -rf "$override_path"
+    mkdir -p "$override_path"
+    while IFS= read -r -d '' file; do
+        local rel_path="${file#$src_dir/}"
+        local third_party_file="$THIRD_PARTY_SRC_DIR/$rel_path"
+        [[ "$rel_path" == *node_modules/* ]] && continue
+        if [ ! -f "$third_party_file" ] || ! cmp -s "$file" "$third_party_file"; then
+            mkdir -p "$override_path/$(dirname "$rel_path")"
+            cp "$file" "$override_path/$(dirname "$rel_path")/"
+            echo "Copied updated $rel_path to $override_path"
+        fi
+    done < <(find "$src_dir" -name "package-lock.json" -type f -print0)
+}
+
 generate_oss_attribution() {
     local combined_oss_attribution_output_dir="${1:-$ROOT_DIR/overrides}"
     local target="$2"
@@ -86,11 +117,13 @@ generate_oss_attribution() {
 
     # Prepare source for target if specified
     if [ -n "$target" ]; then
-        "$ROOT_DIR/scripts/prepare-src.sh" "$target"
+        local prepare_args=("$target")
+        [[ "$RESET_LOCKFILES" == "true" ]] && prepare_args+=(--reset-lockfiles)
+        "$ROOT_DIR/scripts/prepare-src.sh" "${prepare_args[@]}"
         cd "$BUILD_SRC_DIR"
-        npm ci
+        install_dependencies "$BUILD_SRC_DIR"
         cd "$ROOT_DIR"
-        
+        copy_lockfile_overrides "$target" "$BUILD_SRC_DIR"
         check_unapproved_licenses "$target" "$BUILD_SRC_DIR"
     fi
 
@@ -131,14 +164,17 @@ generate_unified_oss_attribution() {
     
     if [[ "$PREPARE_SOURCES" == "true" ]]; then
         echo "Preparing sources from scratch"
+        local prepare_args=()
+        [[ "$RESET_LOCKFILES" == "true" ]] && prepare_args+=(--reset-lockfiles)
         for target in "${targets[@]}"; do
             echo "Preparing source for $target"
             
-            "$ROOT_DIR/scripts/prepare-src.sh" "$target"
+            "$ROOT_DIR/scripts/prepare-src.sh" "$target" "${prepare_args[@]}"
             mv "$ROOT_DIR/code-editor-src" "$ROOT_DIR/code-editor-src-$target"
             cd "$ROOT_DIR/code-editor-src-$target"
-            npm ci
+            install_dependencies "$ROOT_DIR/code-editor-src-$target"
             cd "$ROOT_DIR"
+            copy_lockfile_overrides "$target" "$ROOT_DIR/code-editor-src-$target"
             
             target_dirs+=("$ROOT_DIR/code-editor-src-$target")
         done
@@ -210,6 +246,8 @@ EOF
 COMMAND="generate_oss_attribution"
 OUTPUT_DIR="$ROOT_DIR/overrides"
 PREPARE_SOURCES=false
+UPDATE_LOCKFILES=false
+RESET_LOCKFILES=false
 TARGET="code-editor-server"
 
 while [[ $# -gt 0 ]]; do
@@ -228,6 +266,15 @@ while [[ $# -gt 0 ]]; do
             ;;
         --prepare-sources)
             PREPARE_SOURCES=true
+            shift
+            ;;
+        --update-lockfiles)
+            PREPARE_SOURCES=true
+            UPDATE_LOCKFILES=true
+            shift
+            ;;
+        --reset-lockfiles)
+            RESET_LOCKFILES=true
             shift
             ;;
         --*)

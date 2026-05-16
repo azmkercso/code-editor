@@ -1,0 +1,375 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to release from (e.g., 1.2)'
+        required: true
+        type: string
+      version-override:
+        description: 'Override version (default: auto-increment patch from latest tag on branch)'
+        required: false
+        type: string
+      sagemaker-version:
+        description: 'SageMaker Code Editor version (overrides configuration/sagemaker-version.json)'
+        required: false
+        type: string
+
+env:
+  SAGEMAKER_ARTIFACT_PREFIX: "code-editor-sagemaker-server"
+
+jobs:
+  readiness-check:
+    name: Check Release Readiness
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      commit-sha: ${{ steps.compute.outputs.commit-sha }}
+      sagemaker-version: ${{ steps.compute.outputs.sagemaker-version }}
+      scan-passed: ${{ steps.check-scan.outputs.passed }}
+      build-available: ${{ steps.check-build.outputs.available }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Compute version and commit
+        id: compute
+        run: |
+          BRANCH="${{ inputs.branch }}"
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "commit-sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+
+          # Compute version
+          if [ -n "${{ inputs.version-override }}" ]; then
+            VERSION="${{ inputs.version-override }}"
+          else
+            LATEST_TAG=$(git tag -l "${BRANCH}.*" --sort=-v:refname | grep -E "^${BRANCH}\.[0-9]+$" | head -1)
+            if [ -z "$LATEST_TAG" ]; then
+              VERSION="${BRANCH}.0"
+            else
+              PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
+              VERSION="${BRANCH}.$((PATCH + 1))"
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Validate version format
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'; then
+            echo "::error::Version $VERSION does not follow semver pattern (x.y.z or x.y.z-rc.N)"
+            exit 1
+          fi
+
+          # Validate version matches branch
+          MAJOR_MINOR=$(echo "$VERSION" | cut -d'.' -f1,2)
+          if [ "$MAJOR_MINOR" != "$BRANCH" ]; then
+            echo "::error::Version $VERSION does not match branch $BRANCH"
+            exit 1
+          fi
+
+          # Resolve SageMaker version
+          if [ -n "${{ inputs.sagemaker-version }}" ]; then
+            SM_VERSION="${{ inputs.sagemaker-version }}"
+          else
+            SM_VERSION=$(jq -r '.sagemakerCodeEditorVersion' configuration/sagemaker-version.json)
+          fi
+          echo "sagemaker-version=$SM_VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "Release: $VERSION (commit: ${COMMIT_SHA:0:8}, SageMaker: $SM_VERSION)"
+
+      - name: Check security scan
+        id: check-scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA="${{ steps.compute.outputs.commit-sha }}"
+          BRANCH="${{ inputs.branch }}"
+
+          SCAN_RESULT=$(gh run list --workflow=security-scan.yaml --branch="$BRANCH" \
+            --json headSha,status,conclusion,databaseId --limit 20 | \
+            jq -r --arg sha "$COMMIT_SHA" '.[] | select(.headSha == $sha)' | head -1)
+
+          SCAN_STATUS=$(echo "$SCAN_RESULT" | jq -r '.status // empty')
+          SCAN_CONCLUSION=$(echo "$SCAN_RESULT" | jq -r '.conclusion // empty')
+          SCAN_ID=$(echo "$SCAN_RESULT" | jq -r '.databaseId // empty')
+
+          if [ "$SCAN_STATUS" = "completed" ] && [ "$SCAN_CONCLUSION" = "success" ]; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+            SCAN_ICON="✅ Passed (run: $SCAN_ID)"
+          elif [ "$SCAN_STATUS" = "completed" ]; then
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            SCAN_ICON="❌ Failed (run: $SCAN_ID)"
+          elif [ -n "$SCAN_STATUS" ]; then
+            echo "passed=pending" >> "$GITHUB_OUTPUT"
+            SCAN_ICON="⏳ In progress (run: $SCAN_ID)"
+          else
+            echo "passed=missing" >> "$GITHUB_OUTPUT"
+            SCAN_ICON="⚠️ Not found — triggering..."
+            gh workflow run security-scan.yaml --ref "$BRANCH"
+          fi
+          echo "SCAN_ICON=$SCAN_ICON" >> "$GITHUB_ENV"
+
+      - name: Check build artifacts
+        id: check-build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA="${{ steps.compute.outputs.commit-sha }}"
+
+          if gh run download --name "$COMMIT_SHA-$SAGEMAKER_ARTIFACT_PREFIX-build" --dir /tmp/build-check 2>/dev/null; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            BUILD_ICON="✅ Available"
+            rm -rf /tmp/build-check
+          else
+            BUILD_RUN=$(gh run list --workflow=build-targets.yaml \
+              --json headSha,status,databaseId --limit 20 | \
+              jq -r --arg sha "$COMMIT_SHA" '.[] | select(.headSha == $sha and .status != "completed") | .databaseId' | head -1)
+
+            if [ -n "$BUILD_RUN" ]; then
+              echo "available=pending" >> "$GITHUB_OUTPUT"
+              BUILD_ICON="⏳ In progress (run: $BUILD_RUN)"
+            else
+              echo "available=missing" >> "$GITHUB_OUTPUT"
+              BUILD_ICON="⚠️ Not found"
+            fi
+          fi
+          echo "BUILD_ICON=$BUILD_ICON" >> "$GITHUB_ENV"
+
+      - name: Produce readiness summary
+        run: |
+          VERSION="${{ steps.compute.outputs.version }}"
+          COMMIT_SHA="${{ steps.compute.outputs.commit-sha }}"
+          SM_VERSION="${{ steps.compute.outputs.sagemaker-version }}"
+
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Release Readiness: ${{ inputs.branch }} → $VERSION
+
+          **Commit:** \`${COMMIT_SHA}\`
+
+          | Check | Status |
+          |-------|--------|
+          | Security Scan | $SCAN_ICON |
+          | Build Artifacts | $BUILD_ICON |
+          | Code Editor Version | $VERSION |
+          | SageMaker Version | $SM_VERSION |
+          EOF
+
+  wait-for-prerequisites:
+    name: Wait for Prerequisites
+    needs: readiness-check
+    if: needs.readiness-check.outputs.scan-passed != 'true' || needs.readiness-check.outputs.build-available != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for security scan
+        if: needs.readiness-check.outputs.scan-passed != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA="${{ needs.readiness-check.outputs.commit-sha }}"
+          BRANCH="${{ inputs.branch }}"
+
+          # If scan was missing, it was triggered in readiness-check. If pending, just wait.
+          if [ "${{ needs.readiness-check.outputs.scan-passed }}" = "false" ]; then
+            echo "::error::Security scan FAILED for this commit. Cannot release vulnerable code."
+            exit 1
+          fi
+
+          echo "Waiting for security scan to complete..."
+          for i in $(seq 1 90); do
+            sleep 30
+            RESULT=$(gh run list --workflow=security-scan.yaml --branch="$BRANCH" \
+              --json headSha,status,conclusion --limit 20 | \
+              jq -r --arg sha "$COMMIT_SHA" '.[] | select(.headSha == $sha and .status == "completed")')
+            CONCLUSION=$(echo "$RESULT" | jq -r '.conclusion // empty' | head -1)
+
+            if [ "$CONCLUSION" = "success" ]; then
+              echo "✅ Security scan passed"
+              exit 0
+            elif [ -n "$CONCLUSION" ]; then
+              echo "::error::Security scan FAILED. Cannot release vulnerable code."
+              exit 1
+            fi
+            echo "Waiting for scan... ($i/90, ~$((i / 2))min elapsed)"
+          done
+          echo "::error::Security scan did not complete within 45 minutes"
+          exit 1
+
+      - name: Wait for build artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA="${{ needs.readiness-check.outputs.commit-sha }}"
+          BRANCH="${{ inputs.branch }}"
+
+          # Check if build is already running
+          BUILD_EXISTS=$(gh run list --workflow=build-targets.yaml \
+            --json headSha,status --limit 20 | \
+            jq -r --arg sha "$COMMIT_SHA" '.[] | select(.headSha == $sha) | .status' | head -1)
+
+          if [ -z "$BUILD_EXISTS" ]; then
+            echo "No build found. Triggering build workflow..."
+            gh workflow run build-targets.yaml --ref "$BRANCH"
+          else
+            echo "Build already exists (status: $BUILD_EXISTS)"
+          fi
+
+          echo "Waiting for build artifacts..."
+          for i in $(seq 1 120); do
+            sleep 30
+            if gh run download --name "$COMMIT_SHA-${{ env.SAGEMAKER_ARTIFACT_PREFIX }}-build" --dir /tmp/build-check 2>/dev/null; then
+              echo "✅ Build artifacts available"
+              rm -rf /tmp/build-check
+              exit 0
+            fi
+
+            # Detect build failure early
+            FAILED=$(gh run list --workflow=build-targets.yaml \
+              --json headSha,status,conclusion --limit 20 | \
+              jq -r --arg sha "$COMMIT_SHA" '.[] | select(.headSha == $sha and .conclusion == "failure") | .conclusion' | head -1)
+            if [ "$FAILED" = "failure" ]; then
+              echo "::error::Build FAILED for this commit."
+              exit 1
+            fi
+            echo "Waiting for build... ($i/120, ~$((i / 2))min elapsed)"
+          done
+          echo "::error::Build did not complete within 60 minutes"
+          exit 1
+
+  release:
+    name: Create Release
+    needs: [readiness-check, wait-for-prerequisites]
+    if: always() && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    environment: release-workflow-env
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.readiness-check.outputs.version }}
+      COMMIT_SHA: ${{ needs.readiness-check.outputs.commit-sha }}
+      SM_VERSION: ${{ needs.readiness-check.outputs.sagemaker-version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Download sagemaker artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download --name "$COMMIT_SHA-$SAGEMAKER_ARTIFACT_PREFIX-build" --name "$COMMIT_SHA-$SAGEMAKER_ARTIFACT_PREFIX-src"
+
+      - name: Check artifacts exist
+        run: |
+          FILES=(
+            "$COMMIT_SHA-$SAGEMAKER_ARTIFACT_PREFIX-build/$SAGEMAKER_ARTIFACT_PREFIX-build.tar.gz"
+            "$COMMIT_SHA-$SAGEMAKER_ARTIFACT_PREFIX-src/$SAGEMAKER_ARTIFACT_PREFIX-src.tar.gz"
+          )
+          for file in "${FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "::error::$file not found for commit $COMMIT_SHA"
+              exit 1
+            fi
+          done
+
+      - name: Update Code Editor and SageMaker versions
+        run: |
+          # Update src artifact
+          tar xzf "$COMMIT_SHA-$SAGEMAKER_ARTIFACT_PREFIX-src/$SAGEMAKER_ARTIFACT_PREFIX-src.tar.gz"
+          cd code-editor-src
+          CURRENT_VERSION=$(jq -r '.codeEditorVersion' product.json)
+          jq ".codeEditorVersion = \"$VERSION\" | .sagemakerCodeEditorVersion = \"$SM_VERSION\"" product.json > temp.json && mv temp.json product.json
+          # Replace placeholder if present
+          sed -i "s/__SAGEMAKER_VERSION__/$SM_VERSION/g" product.json
+          cd ..
+          tar -czf "code-editor-sagemaker-src-$VERSION.tar.gz" code-editor-src/
+          rm -rf code-editor-src
+
+          # Update build artifact
+          tar xzf "$COMMIT_SHA-$SAGEMAKER_ARTIFACT_PREFIX-build/$SAGEMAKER_ARTIFACT_PREFIX-build.tar.gz"
+          cd vscode-reh-web-linux-x64
+
+          jq ".codeEditorVersion = \"$VERSION\" | .sagemakerCodeEditorVersion = \"$SM_VERSION\"" product.json > temp.json && mv temp.json product.json
+
+          FILES_TO_UPDATE=(
+            "out/server-main.js"
+            "out/vs/code/browser/workbench/workbench.js"
+            "out/vs/platform/terminal/node/ptyHostMain.js"
+            "out/vs/workbench/api/node/extensionHostProcess.js"
+          )
+          for file in "${FILES_TO_UPDATE[@]}"; do
+            sed -i "s/codeEditorVersion:\s*\"$CURRENT_VERSION\"/codeEditorVersion:\"$VERSION\"/g" "$file"
+          done
+
+          cd ..
+          tar -czf "code-editor-sagemaker-server-$VERSION.tar.gz" vscode-reh-web-linux-x64/
+          rm -rf vscode-reh-web-linux-x64
+
+      - name: Create tag
+        run: |
+          git tag "$VERSION"
+          git push origin "$VERSION"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE_FLAG=""
+          if echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$'; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            echo "Release exists, uploading assets..."
+            gh release upload "$VERSION" ./*.tar.gz --clobber
+          else
+            gh release create "$VERSION" ./*.tar.gz \
+              --title "Release $VERSION" \
+              --notes "Code Editor Version: $VERSION
+          SageMaker Code Editor Version: $SM_VERSION" \
+              $PRERELEASE_FLAG
+          fi
+
+      - name: Update readiness summary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Release Result: $VERSION
+          **Tag:** \`$VERSION\`
+          **Commit:** \`$COMMIT_SHA\`
+          **SageMaker Version:** $SM_VERSION
+          **Status:** ${{ job.status }}
+          EOF
+
+  handle-failures:
+    name: Handle Failures
+    runs-on: ubuntu-latest
+    needs: release
+    environment: release-workflow-env
+    if: failure()
+    permissions:
+      id-token: write
+    env:
+      REPOSITORY: ${{ github.repository }}
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+    steps:
+      - name: Use role credentials for metrics
+        id: aws-creds
+        continue-on-error: ${{ env.REPOSITORY != 'aws/code-editor' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 900
+          aws-region: us-east-1
+      - name: Report failure
+        if: steps.aws-creds.outcome == 'success'
+        run: |
+          aws cloudwatch put-metric-data \
+            --namespace "GitHub/Workflows" \
+            --metric-name "ExecutionsFailed" \
+            --dimensions "Repository=$REPOSITORY,Workflow=Release" \
+            --value 1

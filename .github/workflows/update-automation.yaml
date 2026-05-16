@@ -232,8 +232,9 @@ jobs:
       - name: Build target
         env:
           TARGET: ${{ matrix.target }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./scripts/prepare-src.sh "$TARGET"
+          ./scripts/prepare-src.sh "$TARGET" --reset-lockfiles
           
           cd code-editor-src
           npm install
@@ -256,7 +257,7 @@ jobs:
             rel_path="${file#code-editor-src/}"
             third_party_file="third-party-src/$rel_path"
             # Skip files in node_modules
-            if [[ "$rel_path" == node_modules/* ]]; then
+            if [[ "$rel_path" == *node_modules/* ]]; then
               continue
             fi
             if [ ! -f "$third_party_file" ] || ! cmp -s "$file" "$third_party_file"; then
@@ -349,7 +350,7 @@ jobs:
           
       - name: Generate unified OSS attribution
         run: |
-          ./scripts/generate-oss-attribution.sh --command generate_unified_oss_attribution
+          ./scripts/manage-dependencies.sh --command generate_unified_oss_attribution
           
       - name: Commit OSS attribution
         env:
