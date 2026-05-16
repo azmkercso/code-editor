@@ -316,7 +316,13 @@ rebase() {
                 quilt pop -f 2>/dev/null || true
 
                 set +e
-                (cd "$PRESENT_WORKING_DIR" && eval "$generator") 2>&1
+                # Security: only allow generators under scripts/patches/
+                if [[ ! "$generator" =~ ^scripts/patches/[a-zA-Z0-9_-]+\.sh(\ .*)?$ ]]; then
+                    echo "ERROR: @generator must reference scripts/patches/*.sh — refusing to execute: $generator"
+                    popd > /dev/null
+                    exit 1
+                fi
+                (cd "$PRESENT_WORKING_DIR" && $generator) 2>&1
                 local regen_code=$?
                 set -e
 
