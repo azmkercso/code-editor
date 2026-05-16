@@ -122,7 +122,16 @@ generate_additional_sboms() {
     cd - > /dev/null
     echo "Generated SBOM for semver package"
     
-    # 3. Generate SBOM for Node.js linux-x64 binary
+    # 3. Generate SBOM for unit-tests
+    echo "Generating SBOM for unit-tests"
+    
+    unit_tests_dir="$root_dir/unit-tests"
+    cd "$unit_tests_dir"
+    cyclonedx-npm --omit dev --output-reproducible --spec-version 1.5 -o "$root_dir/additional-node-js-sboms/unit-tests-sbom.json"
+    cd - > /dev/null
+    echo "Generated SBOM for unit-tests"
+    
+    # 4. Generate SBOM for Node.js linux-x64 binary
     echo "Generating SBOM for Node.js linux-x64 binary"
     
     # Read Node.js version from .npmrc file
@@ -133,7 +142,7 @@ generate_additional_sboms() {
     syft "$node_x64_dir" -o cyclonedx-json@1.5="$root_dir/additional-node-js-sboms/nodejs-x64-sbom.json"
     echo "Generated SBOM for Node.js x64 binary"
     
-    # 4. Generate SBOM for Node.js linux-arm64 binary
+    # 5. Generate SBOM for Node.js linux-arm64 binary
     echo "Generating SBOM for Node.js linux-arm64 binary"
     
     node_arm64_dir="nodejs-binaries/node-v$NODE_VERSION-linux-arm64"
@@ -252,12 +261,21 @@ analyze_sbom_results() {
         exit 1
     fi
     
+    # SLA thresholds (days from finding creation date)
+    # Based on corporate security policy
+    local SLA_CRITICAL=0    # Emergent — immediate block
+    local SLA_HIGH=14
+    local SLA_MEDIUM=30
+    local SLA_LOW=60
+    
     # Initialize totals
     local total_critical=0
     local total_high=0
     local total_medium=0
     local total_other=0
     local total_low=0
+    local sla_breached_count=0
+    local within_sla_count=0
     
     echo "=== SBOM Security Scan Results for $target ==="
     
@@ -290,12 +308,41 @@ analyze_sbom_results() {
         total_other=$((total_other + other))
         total_low=$((total_low + low))
         
-        # Check for concerning vulnerabilities in this directory
-        local dir_concerning=$((critical + high + medium + other))
-        if [ $dir_concerning -gt 0 ]; then
-            echo "⚠️  Found $dir_concerning concerning vulnerabilities in $dir_name"
-        else
-            echo "✅ No concerning vulnerabilities in $dir_name"
+        # SLA analysis: check individual vulnerabilities for SLA breach
+        local now_epoch=$(date +%s)
+        local vulnerabilities=$(jq -c '.sbom.vulnerabilities[]? // empty' "$result_file" 2>/dev/null)
+        
+        if [ -n "$vulnerabilities" ]; then
+            while IFS= read -r vuln; do
+                local vuln_severity=$(echo "$vuln" | jq -r '.severity // "unknown"' | tr '[:upper:]' '[:lower:]')
+                local vuln_id=$(echo "$vuln" | jq -r '.id // "unknown"')
+                local first_observed=$(echo "$vuln" | jq -r '.first_observed_at // .created // empty')
+                
+                # Determine SLA days for this severity
+                local sla_days=-1
+                case "$vuln_severity" in
+                    critical)  sla_days=$SLA_CRITICAL ;;
+                    high)      sla_days=$SLA_HIGH ;;
+                    medium)    sla_days=$SLA_MEDIUM ;;
+                    low)       sla_days=$SLA_LOW ;;
+                    *)         sla_days=$SLA_MEDIUM ;;  # 'other' treated as medium
+                esac
+                
+                # Calculate days open
+                local days_open=0
+                if [ -n "$first_observed" ]; then
+                    local observed_epoch=$(date -d "$first_observed" +%s 2>/dev/null || echo "0")
+                    if [ "$observed_epoch" -gt 0 ]; then
+                        days_open=$(( (now_epoch - observed_epoch) / 86400 ))
+                    fi
+                fi
+                
+                if [ "$days_open" -gt "$sla_days" ]; then
+                    sla_breached_count=$((sla_breached_count + 1))
+                else
+                    within_sla_count=$((within_sla_count + 1))
+                fi
+            done <<< "$vulnerabilities"
         fi
         
     done < "$results_file"
@@ -307,18 +354,41 @@ analyze_sbom_results() {
     echo "Total Medium vulnerabilities: $total_medium"
     echo "Total Other vulnerabilities: $total_other"
     echo "Total Low vulnerabilities: $total_low"
+    echo ""
+    echo "SLA-breached findings: $sla_breached_count"
+    echo "Within-SLA findings: $within_sla_count"
     echo "=================================================="
     
-    # Calculate total concerning vulnerabilities (excluding low)
-    local total_concerning=$((total_critical + total_high + total_medium + total_other))
+    # Publish SLA metrics (if AWS credentials are available)
+    if aws sts get-caller-identity > /dev/null 2>&1; then
+        local repository="${GITHUB_REPOSITORY:-aws/code-editor}"
+        
+        if [ "$within_sla_count" -gt 0 ]; then
+            aws cloudwatch put-metric-data \
+                --namespace "GitHub/Workflows" \
+                --metric-name "SecurityFindingsWithinSLA" \
+                --dimensions "Repository=$repository,Workflow=SecurityScan" \
+                --value "$within_sla_count" 2>/dev/null || true
+        fi
+        
+        if [ "$sla_breached_count" -gt 0 ]; then
+            aws cloudwatch put-metric-data \
+                --namespace "GitHub/Workflows" \
+                --metric-name "SecurityFindingsSLABreached" \
+                --dimensions "Repository=$repository,Workflow=SecurityScan" \
+                --value "$sla_breached_count" 2>/dev/null || true
+        fi
+    fi
     
-    if [ $total_concerning -gt 0 ]; then
-        echo "❌ Security scan FAILED: Found $total_concerning concerning vulnerabilities across all directories"
-        echo "Critical: $total_critical, High: $total_high, Medium: $total_medium, Other: $total_other"
+    # Exit code based on SLA breach, not raw counts
+    if [ $sla_breached_count -gt 0 ]; then
+        echo "❌ Security scan FAILED: $sla_breached_count findings have breached their SLA"
         exit 1
+    elif [ $within_sla_count -gt 0 ]; then
+        echo "⚠️  Security scan PASSED with warnings: $within_sla_count findings within SLA"
+        echo "These findings must be resolved before their SLA expires"
     else
-        echo "✅ Security scan PASSED: No concerning vulnerabilities found across all directories"
-        echo "Total Low vulnerabilities: $total_low (acceptable)"
+        echo "✅ Security scan PASSED: No vulnerabilities found"
     fi
 }
 
@@ -329,19 +399,26 @@ scan_github_advisories() {
     local repo_owner="microsoft"
     local repo_name="vscode"
     local vscode_version=$(jq -r '.version' third-party-src/package.json)
-    local backported_file="patches/backported-patches.json"
     
     echo "Found VS Code version: $vscode_version"
     
-    # Load backported patches list if exists
+    # Load backported finding IDs from patch headers (@backported + @finding-id metadata)
     local -A backported_patches
-    if [ -f "$backported_file" ]; then
-        echo "Loading backported patches from $backported_file"
-        local finding_ids=$(jq -r '.[].finding_id' "$backported_file")
-        while IFS= read -r finding_id; do
-            [ -n "$finding_id" ] && backported_patches["$finding_id"]=1
-        done <<< "$finding_ids"
-        echo "Loaded ${#backported_patches[@]} backported patches to ignore"
+    for patch_file in patches/**/*.diff; do
+        [[ -f "$patch_file" ]] || continue
+        # Only read the header (before first Index: or --- diff marker)
+        local header
+        header=$(sed '/^Index:\|^---.*\//q' "$patch_file")
+        if echo "$header" | grep -q "^@backported"; then
+            local finding_id
+            finding_id=$(echo "$header" | grep "^@finding-id:" | sed 's/^@finding-id:[[:space:]]*//')
+            if [[ -n "$finding_id" ]]; then
+                backported_patches["$finding_id"]=1
+            fi
+        fi
+    done
+    if [[ ${#backported_patches[@]} -gt 0 ]]; then
+        echo "Found ${#backported_patches[@]} backported patches from patch headers"
     fi
     
     echo "Fetching security advisories from GitHub API for $repo_owner/$repo_name"

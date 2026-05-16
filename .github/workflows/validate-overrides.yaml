@@ -1,0 +1,171 @@
+name: Validate Override Completeness
+
+on:
+  pull_request:
+    paths:
+      - 'patches/**/override-*.diff'
+      - 'package-lock-overrides/**'
+      - 'overrides/LICENSE-THIRD-PARTY'
+      - 'LICENSE-THIRD-PARTY'
+    branches:
+      - main
+      - '*.*'
+
+jobs:
+  validate-overrides:
+    name: Static Validation of Override Changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify only allowed files changed
+        run: |
+          # Get list of changed files in this PR
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          DISALLOWED=""
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              patches/**/override-*.diff|patches/sagemaker/override-*.diff)
+                # Override patches — allowed
+                ;;
+              package-lock-overrides/*)
+                # Lockfile overrides — allowed, but only .json files
+                if [[ "$file" != *.json ]]; then
+                  DISALLOWED="$DISALLOWED\n  $file (only .json files allowed in package-lock-overrides)"
+                fi
+                ;;
+              overrides/LICENSE-THIRD-PARTY|LICENSE-THIRD-PARTY)
+                # Attribution — allowed
+                ;;
+              patches/*.series)
+                # Series files — allowed (needed to reference new patches)
+                ;;
+              configuration/sagemaker-version.json)
+                # SageMaker version config — allowed
+                ;;
+              *)
+                DISALLOWED="$DISALLOWED\n  $file"
+                ;;
+            esac
+          done <<< "$CHANGED"
+
+          if [ -n "$DISALLOWED" ]; then
+            echo "::warning::This PR changes files outside the override scope:$DISALLOWED"
+            echo "Override PRs should only modify override patches, lockfiles, series files, and attribution."
+          fi
+
+      - name: Verify override patches only modify package.json overrides
+        run: |
+          ERRORS=""
+          for patch in $(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E 'patches/(overrides|common)/override-.*\.diff$'); do
+            echo "Checking patch: $patch"
+
+            # Extract which files the patch modifies
+            PATCHED_FILES=$(grep -E '^Index:|^---.*a/|^\+\+\+.*b/' "$patch" | grep -oE '(package\.json|package-lock\.json)' | sort -u)
+
+            for pf in $PATCHED_FILES; do
+              if [[ "$pf" != "package.json" && "$pf" != "package-lock.json" ]]; then
+                ERRORS="$ERRORS\n  $patch modifies $pf (only package.json and package-lock.json allowed)"
+              fi
+            done
+
+            # Check that added lines only touch overrides/resolutions sections
+            # Look for added lines that aren't context, headers, or override entries
+            ADDED_CONTENT=$(grep '^+' "$patch" | grep -v '^+++' | grep -v '^+.*"overrides"' | grep -v '^+.*"resolutions"' || true)
+
+            # Filter to only lines that look like they add non-override content
+            SUSPICIOUS=$(echo "$ADDED_CONTENT" | grep -vE '^\+\s*"[^"]+"\s*:\s*"[\^~>=<0-9]' | grep -vE '^\+\s*[{}],?\s*$' | grep -vE '^\+\s*$' || true)
+
+            if [ -n "$SUSPICIOUS" ]; then
+              echo "::warning::Patch $patch has additions that may not be pure overrides:"
+              echo "$SUSPICIOUS"
+            fi
+          done
+
+          if [ -n "$ERRORS" ]; then
+            echo "::error::Override patch validation failed:$ERRORS"
+            exit 1
+          fi
+          echo "✅ Override patches only modify package.json files"
+
+      - name: Extract overridden package versions from patches
+        id: extract-versions
+        run: |
+          # Extract package-name and version from added lines in override patches
+          OVERRIDE_PACKAGES=""
+          for patch in $(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E 'patches/(overrides|common|sagemaker)/override-.*\.diff$'); do
+            # Match lines like: +    "follow-redirects": "^1.16.0"
+            PKGS=$(grep '^+' "$patch" | grep -v '^+++' | grep -oE '"([^"]+)"\s*:\s*"[\^~>=]*([0-9][0-9.]*)"' | sed 's/"\([^"]*\)"\s*:\s*"[\^~>=]*\([0-9][0-9.]*\)"/\1@\2/' || true)
+            if [ -n "$PKGS" ]; then
+              OVERRIDE_PACKAGES="$OVERRIDE_PACKAGES $PKGS"
+            fi
+          done
+
+          OVERRIDE_PACKAGES=$(echo "$OVERRIDE_PACKAGES" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+          echo "Overridden packages: $OVERRIDE_PACKAGES"
+          echo "packages=$OVERRIDE_PACKAGES" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package-lock-overrides were updated
+        run: |
+          # If override patches changed, lockfiles should also have changed
+          OVERRIDE_PATCHES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -cE 'patches/(overrides|common|sagemaker)/override-.*\.diff$' || true)
+          LOCKFILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c 'package-lock-overrides/' || true)
+
+          if [ "$OVERRIDE_PATCHES_CHANGED" -gt 0 ] && [ "$LOCKFILES_CHANGED" -eq 0 ]; then
+            echo "::error::Override patches changed but package-lock-overrides/ not updated."
+            echo "Run the dependency management pipeline to regenerate lockfiles."
+            exit 1
+          fi
+          echo "✅ Lockfile overrides present"
+
+      - name: Verify LICENSE-THIRD-PARTY was updated
+        run: |
+          LOCKFILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c 'package-lock-overrides/' || true)
+          ATTRIBUTION_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -cE '(overrides/)?LICENSE-THIRD-PARTY' || true)
+
+          if [ "$LOCKFILES_CHANGED" -gt 0 ] && [ "$ATTRIBUTION_CHANGED" -eq 0 ]; then
+            echo "::error::Lockfiles changed but LICENSE-THIRD-PARTY not updated."
+            echo "Run manage-dependencies.sh --command generate_unified_oss_attribution."
+            exit 1
+          fi
+          echo "✅ LICENSE-THIRD-PARTY updated"
+
+      - name: Verify overridden packages appear in LICENSE-THIRD-PARTY
+        run: |
+          PACKAGES="${{ steps.extract-versions.outputs.packages }}"
+          if [ -z "$PACKAGES" ]; then
+            echo "No override packages extracted, skipping attribution content check"
+            exit 0
+          fi
+
+          MISSING=""
+          for pkg_version in $PACKAGES; do
+            PKG_NAME=$(echo "$pkg_version" | cut -d@ -f1)
+            PKG_VERSION=$(echo "$pkg_version" | cut -d@ -f2)
+
+            # Check if the package name + version appears in LICENSE-THIRD-PARTY
+            # Format in file: "package-name version" on its own line
+            if grep -qE "^${PKG_NAME} ${PKG_VERSION}" overrides/LICENSE-THIRD-PARTY 2>/dev/null || \
+               grep -qE "^${PKG_NAME} ${PKG_VERSION}" LICENSE-THIRD-PARTY 2>/dev/null; then
+              echo "✅ Found $PKG_NAME $PKG_VERSION in LICENSE-THIRD-PARTY"
+            elif grep -qi "$PKG_NAME" overrides/LICENSE-THIRD-PARTY 2>/dev/null || \
+                 grep -qi "$PKG_NAME" LICENSE-THIRD-PARTY 2>/dev/null; then
+              echo "⚠️  Found $PKG_NAME in LICENSE-THIRD-PARTY but not at version $PKG_VERSION (may be acceptable if version range resolved differently)"
+            else
+              MISSING="$MISSING\n  $PKG_NAME@$PKG_VERSION"
+            fi
+          done
+
+          if [ -n "$MISSING" ]; then
+            echo "::error::The following overridden packages are missing from LICENSE-THIRD-PARTY:$MISSING"
+            echo "Regenerate attribution with manage-dependencies.sh --command generate_unified_oss_attribution"
+            exit 1
+          fi
+          echo "✅ All overridden packages found in LICENSE-THIRD-PARTY"
