@@ -1,0 +1,20 @@
+{
+  "name": "code-editor-unit-tests",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "pretest": "npm run build",
+    "test": "npm run test:all",
+    "test:all": "npm run test:code-editor-sagemaker-server && npm run test:code-editor-server && npm run test:code-editor-web-embedded && npm run test:code-editor-web-embedded-with-terminal",
+    "test:code-editor-sagemaker-server": "TARGET=code-editor-sagemaker-server mocha 'dist/**/*.test.js'",
+    "test:code-editor-server": "TARGET=code-editor-server mocha 'dist/**/*.test.js'",
+    "test:code-editor-web-embedded": "TARGET=code-editor-web-embedded mocha 'dist/**/*.test.js'",
+    "test:code-editor-web-embedded-with-terminal": "TARGET=code-editor-web-embedded-with-terminal mocha 'dist/**/*.test.js'"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "mocha": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}
