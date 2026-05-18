@@ -24,6 +24,7 @@ common/override-picomatch.diff
 common/override-lodash-es.diff
 common/override-follow-redirects.diff
 common/override-uuid-ghsa-w5hq.diff
+common/disable-chat-integ-tests.diff
 web-server/suppress-known-errors-build-integration.diff
 web-server/local-storage.diff
 web-server/base-path.diff
@@ -55,3 +56,4 @@ sagemaker/fix-path-traversal-vscode-remote-resource.diff
 sagemaker/sanitize-terminal-sendtext-paths.diff
 sagemaker/override-picomatch-post-startup-notifications.diff
 sagemaker/remove-delay-shutdown-endpoint.diff
+sagemaker/fix-configuration-editing-integ-tests.diff

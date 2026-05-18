@@ -1,0 +1,16 @@
+Skip chat integration tests. Chat UI is disabled in Code Editor
+(Copilot removed, chat view container unregistered).
+
+Index: code-editor-src/extensions/vscode-api-tests/src/singlefolder-tests/chat.test.ts
+===================================================================
+--- code-editor-src.orig/extensions/vscode-api-tests/src/singlefolder-tests/chat.test.ts
++++ code-editor-src/extensions/vscode-api-tests/src/singlefolder-tests/chat.test.ts
+@@ -10,7 +10,7 @@ import 'mocha';
+ import { ChatContext, ChatRequest, ChatRequestTurn, ChatRequestTurn2, ChatResult, Disposable, env, Event, EventEmitter, chat, commands, lm, UIKind } from 'vscode';
+ import { DeferredPromise, asPromise, assertNoRpc, closeAllEditors, delay, disposeAll } from '../utils';
+ 
+-suite('chat', () => {
++suite.skip('chat', () => {
+ 
+ 	let disposables: Disposable[] = [];
+ 	setup(() => {

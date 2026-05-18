@@ -1,0 +1,35 @@
+Adjust extension recommendation completion tests to use sagemaker
+extension IDs instead of ms-vscode.js-debug which is removed.
+
+Index: code-editor-src/extensions/configuration-editing/src/test/completion.test.ts
+===================================================================
+--- code-editor-src.orig/extensions/configuration-editing/src/test/completion.test.ts
++++ code-editor-src/extensions/configuration-editing/src/test/completion.test.ts
+@@ -307,11 +307,11 @@ suite('Completions in extensions.json',
+ 			const resultText = [
+ 				'{',
+ 				'  "recommendations": [',
+-				'    "ms-vscode.js-debug"',
++				'    "sagemaker.sagemaker-extension"',
+ 				'  ]',
+ 				'}',
+ 			].join('\n');
+-			const expected = { label: 'ms-vscode.js-debug', resultText };
++			const expected = { label: 'sagemaker.sagemaker-extension', resultText };
+ 			await testCompletion(testFile, 'jsonc', content, expected);
+ 		}
+ 	});
+@@ -327,11 +327,11 @@ suite('Completions in extensions.json',
+ 			const resultText = [
+ 				'{',
+ 				'  "recommendations": [',
+-				'    "ms-vscode.js-debug"',
++				'    "sagemaker.sagemaker-extension"',
+ 				'  ]',
+ 				'}',
+ 			].join('\n');
+-			const expected = { label: 'ms-vscode.js-debug', resultText };
++			const expected = { label: 'sagemaker.sagemaker-extension', resultText };
+ 			await testCompletion(testFile, 'jsonc', content, expected);
+ 		}
+ 	});
