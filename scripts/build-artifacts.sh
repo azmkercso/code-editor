@@ -106,7 +106,10 @@ build() {
     local present_working_dir="$(pwd)"
     local build_src_dir="${present_working_dir}/code-editor-src"
     
-    local build_target="${code_oss_build_target_base}-min"
+    local build_target="${code_oss_build_target_base}"
+    if [[ "$DEV_BUILD" != "true" ]]; then
+        build_target="${build_target}-min"
+    fi
     
     echo "Building Code Editor with '$build_target' as target with ${max_space_size_mb} MiB allocated heap"
     
@@ -117,9 +120,41 @@ build() {
     cd ..
 }
 
+DEV_BUILD=false
+SKIP_INSTALL=false
+
+install_dependencies() {
+    local build_src_dir="$(pwd)/code-editor-src"
+    cd "$build_src_dir"
+    for i in 1 2 3; do
+        echo "npm ci attempt $i"
+        if npm ci; then
+            cd ..
+            return 0
+        fi
+        echo "Attempt $i failed, waiting before retry..."
+        rm -rf node_modules
+        sleep $((i * 30))
+    done
+    echo "ERROR: npm ci failed after 3 attempts"
+    exit 1
+}
+
 main() {
-    local target="${1:-code-editor-sagemaker-server}"
+    local target="code-editor-sagemaker-server"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dev) DEV_BUILD=true; shift ;;
+            --skip-install) SKIP_INSTALL=true; shift ;;
+            *) target="$1"; shift ;;
+        esac
+    done
     
+    if [[ "$SKIP_INSTALL" != "true" ]]; then
+        install_dependencies
+    fi
+
     local build_target_base=$("$(dirname "$0")/determine-build-target.sh" "$target")
     echo "Building for target: $build_target_base"
     build "$build_target_base"

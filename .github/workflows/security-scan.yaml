@@ -306,12 +306,32 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: 'code-editor-src/package-lock.json'
+
+      - name: Cache ripgrep and node-gyp downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/vscode-ripgrep-cache-*
+            ~/.cache/node-gyp
+            ~/.node-gyp
+          key: native-modules-${{ runner.os }}-${{ hashFiles('code-editor-src/package-lock.json') }}
+          restore-keys: |
+            native-modules-${{ runner.os }}-
       
       - name: Install Code Editor Dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd code-editor-src
-          echo "Installing Dependencies"
-          npm ci
+          for i in 1 2 3; do
+            echo "npm ci attempt $i"
+            if npm ci; then exit 0; fi
+            echo "Attempt $i failed, waiting before retry..."
+            rm -rf node_modules
+            sleep $((i * 30))
+          done
+          echo "::error::npm ci failed after 3 attempts"
+          exit 1
       
       - name: Install Security Scan Dependencies
         run: |

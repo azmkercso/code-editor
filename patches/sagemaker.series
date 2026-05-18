@@ -30,6 +30,7 @@ web-server/base-path.diff
 web-server/webview.diff
 common/finding-override-ip-address.diff
 common/fix-mcp-server-editor-disclosure.diff
+common/skip-mangling-for-dev-builds.diff
 web-server/marketplace.diff
 web-server/integration.diff
 web-server/embedding-events.diff
