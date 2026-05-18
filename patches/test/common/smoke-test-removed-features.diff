@@ -21,7 +21,7 @@ Index: code-editor-src/test/smoke/src/areas/customizations/removed-features.test
 ===================================================================
 --- /dev/null
 +++ code-editor-src/test/smoke/src/areas/customizations/removed-features.test.ts
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,86 @@
 +/*---------------------------------------------------------------------------------------------
 + *  Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved.
 + *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -30,7 +30,6 @@ Index: code-editor-src/test/smoke/src/areas/customizations/removed-features.test
 +import { Application, Logger } from '../../../../automation';
 +import { installAllHandlers } from '../../utils';
 +
-+const target = process.env.CODE_EDITOR_TARGET || '';
 +
 +export function setup(logger: Logger) {
 +	describe('Code Editor - Removed Features', () => {

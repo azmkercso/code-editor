@@ -125,11 +125,12 @@ Index: code-editor-src/extensions/sagemaker-ui-dark-theme/tsconfig.json
 ===================================================================
 --- /dev/null
 +++ code-editor-src/extensions/sagemaker-ui-dark-theme/tsconfig.json
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,12 @@
 +{
 +	"extends": "../tsconfig.base.json",
 +	"compilerOptions": {
 +		"outDir": "./out",
++		"rootDir": "./src",
 +		"skipLibCheck": true
 +	},
 +	"include": [

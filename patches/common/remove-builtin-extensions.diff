@@ -1446,20 +1446,6 @@ Index: code-editor-src/src/vs/workbench/contrib/terminalContrib/chatAgentTools/c
 +		included: false,
  	};
  }
-Index: code-editor-src/src/vs/platform/configuration/common/configurationRegistry.ts
-===================================================================
---- code-editor-src.orig/src/vs/platform/configuration/common/configurationRegistry.ts
-+++ code-editor-src/src/vs/platform/configuration/common/configurationRegistry.ts
-@@ -530,8 +530,7 @@ class ConfigurationRegistry extends Disp
- 			source,
- 			defaultValueSource: source
- 		};
--		this.configurationProperties[key] = property;
--		this.defaultLanguageConfigurationOverridesNode.properties![key] = property;
-+		this.excludedConfigurationProperties[key] = property;
- 	}
- 
- 	private mergeDefaultConfigurationsForOverrideIdentifier(overrideIdentifier: string, configurationValueObject: IStringDictionary<unknown>, valueSource: ConfigurationDefaultSource | undefined, existingDefaultOverride: IConfigurationDefaultOverrideValue | undefined): IConfigurationDefaultOverrideValue | undefined {
 Index: code-editor-src/src/vs/workbench/browser/workbench.contribution.ts
 ===================================================================
 --- code-editor-src.orig/src/vs/workbench/browser/workbench.contribution.ts

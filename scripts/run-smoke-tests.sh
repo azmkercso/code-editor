@@ -96,7 +96,9 @@ if [ "$SKIP_COMPILE" = false ]; then
   echo "=== Installing Playwright ==="
   npx playwright install --with-deps chromium
   echo "=== Compiling smoke tests ==="
-  cd test/smoke
+  cd "$SRC_DIR/test/automation"
+  npm install 2>&1 | tail -3
+  cd "$SRC_DIR/test/smoke"
   npm install 2>&1 | tail -3
   npm run compile
 fi
@@ -135,7 +137,13 @@ if [ -n "$GREP_PATTERN" ]; then
   EXTRA_ARGS="--grep $GREP_PATTERN"
 fi
 
-VSCODE_REMOTE_SERVER_PATH="$BUILD_DIR" \
+# Set sagemaker-specific env vars for smoke tests
+SMOKE_ENV=""
+if [[ "$TARGET" == *sagemaker* ]]; then
+  SMOKE_ENV="SERVICE_NAME=SageMakerUnifiedStudio CODE_EDITOR_CLI_NAME=sagemaker-code-editor"
+fi
+
+env $SMOKE_ENV VSCODE_REMOTE_SERVER_PATH="$BUILD_DIR" \
   node test/index.js --web --headless $EXTRA_ARGS
 
 echo "=== Smoke tests complete ==="
